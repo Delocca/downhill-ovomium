@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mod « explorateur » : journalise ce qu'on sait lire du jeu (vélo, rider, piste, chrono, Steam).
+       Références : ../../refs (copie des assemblies MelonLoader + interop du jeu, gitignoré). -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>LmdExplorer</AssemblyName>
+    <RootNamespace>LmdExplorer</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RefsDir>$(MSBuildThisFileDirectory)../../refs/</RefsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RefsDir)MelonLoader.dll" Private="false" />
+    <Reference Include="$(RefsDir)0Harmony.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppSystem.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppSystem.Core.dll" Private="false" />
+    <Reference Include="$(RefsDir)Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppMegagon.Framework.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppMegagon.CommonInterfaces.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppFacepunch.Steamworks.Win64.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppSteam.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(RefsDir)Unity.TextMeshPro.dll" Private="false" />
+  </ItemGroup>
+</Project>

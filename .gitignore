@@ -1,0 +1,7 @@
+vendor/
+bin/
+obj/
+dist/
+refs/
+*.log
+.tools/

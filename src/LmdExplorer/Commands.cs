@@ -1,0 +1,92 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Il2CppMegagon.Downhill;
+using Il2CppMegagon.Downhill.Tracks;
+using Il2CppMegagon.Downhill.UI.Screens;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace LmdExplorer;
+
+/// Commandes de test, déclenchées par le fichier UserData/LmdExplorer/cmd.txt (une commande par ligne)
+/// pour piloter le jeu sans clavier (Xvfb). Le fichier est supprimé après lecture.
+internal static class Commands
+{
+    private const string FileName = "cmd.txt";
+
+    // Sous Proton, Z: = racine Linux : /tmp/lmdexplorer-cmd.txt est aussi lu (pratique pour les tests).
+    private static readonly string[] Paths = { Path.Combine(Out.Dir, FileName), @"Z:\tmp\lmdexplorer-cmd.txt" };
+
+    public static void Poll()
+    {
+        foreach (var p in Paths) PollFile(p);
+    }
+
+    private static void PollFile(string path)
+    {
+        if (!File.Exists(path)) return;
+        string[] lines = File.ReadAllLines(path);
+        File.Delete(path);
+        foreach (var line in lines)
+            if (!string.IsNullOrWhiteSpace(line)) Out.Try($"commande '{line}'", () => Run(line.Trim()));
+    }
+
+    /// Table des commandes : nom -> action(argument éventuel).
+    private static readonly Dictionary<string, Action<string>> Table = new()
+    {
+        ["dump"] = _ => Probes.FullDump(),
+        ["status"] = _ => Out.Info(Probes.StatusLine()),
+        ["puppet"] = _ => TogglePuppet(),
+        ["screens"] = _ => ListScreens(),
+        // Navigation / chargement de piste
+        ["mainstart"] = _ => Object.FindObjectOfType<MainMenuScreen>().OnStartButton(),  // écran titre -> menu de jeu
+        ["start"] = _ => Object.FindObjectOfType<GameMenu>().Method_Public_Void_1(),      // lance la piste sélectionnée
+        ["menu"] = _ => GameStateManager.Method_Public_Static_Void_1(),                    // piste -> menu de jeu
+        ["catalogue"] = _ => Out.WriteFile("catalogue.txt", TrackProbe.Catalogue()),
+        ["sel"] = _ => Out.Info(TrackProbe.SelectionLine()),
+        ["select"] = id => TrackProbe.Select(id),                                           // select AL_01_A1
+        // Course
+        ["restart"] = _ => FirstPause().OnRestartRun(),
+        ["restartcp"] = _ => FirstPause().OnRestartCheckpoint(),
+        ["lock"] = _ => PlayerManager.Method_Public_Static_Void_Boolean_0(true),
+        ["unlock"] = _ => PlayerManager.Method_Public_Static_Void_Boolean_0(false),
+        ["tostart"] = _ => PlayerManager.Method_Public_Static_Void_Transform_0(StartTransform()),
+        ["call"] = spec => Invoker.Call(spec),
+    };
+
+    public static void Run(string line)
+    {
+        Out.Info($"> {line}");
+        string[] a = line.Split(' ', 2);
+        if (Table.TryGetValue(a[0], out var action)) action(a.Length > 1 ? a[1] : null);
+        else Out.Info($"commande inconnue. Connues : {string.Join(", ", Table.Keys)}");
+    }
+
+    private static void ListScreens()
+    {
+        foreach (var s in Object.FindObjectsOfType<ScreenBase>())
+            Out.Info($"écran actif : {s.GetIl2CppType().Name} ({s.name})");
+    }
+
+    private static void TogglePuppet()
+    {
+        var bike = BikeProbe.Find();
+        PuppetTest.Toggle(bike != null ? bike.gameObject : null);
+    }
+
+    private static PauseScreen FirstPause()
+    {
+        var all = Resources.FindObjectsOfTypeAll<PauseScreen>();
+        return all.Length > 0 ? all[0] : null;
+    }
+
+    /// Point de spawn du premier checkpoint de la route courante (= départ, supposé).
+    private static Transform StartTransform()
+    {
+        var route = PlayManager.prop_TrackRoute_0;
+        var cp = route.m_checkpoints[0];
+        Out.Info($"départ = {cp.name} spawn={cp.m_spawnTransform?.position}");
+        return cp.m_spawnTransform != null ? cp.m_spawnTransform : cp.transform;
+    }
+}
