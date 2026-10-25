@@ -3,6 +3,7 @@
 # Usage : linux-tests.sh <dossier extrait du zip> <dossier de travail>
 set -uo pipefail
 DIST="$1" W="$2"
+CAM=LMD-Camera.dll
 FAIL=0
 check() { if eval "$1"; then echo "OK   $2"; else echo "ÉCHEC $2"; FAIL=1; fi; }
 
@@ -35,19 +36,31 @@ mkdir -p "$GAME/UserData" && echo 'Port = 47701' >"$GAME/UserData/LmdMulti.cfg"
 run; code=$?
 check '[[ $code == 0 ]]' "install : code 0 ($code)"
 check 'cmp -s "$GAME/Mods/LmdMulti.dll" "$DIST/fichiers/LmdMulti.dll"' 'install : DLL copiée (2e bibliothèque)'
+check 'cmp -s "$GAME/Mods/$CAM" "$DIST/fichiers/$CAM"' 'install : LMD-Camera copié'
 check 'cmp -s "$GAME/version.dll" "$DIST/fichiers/melonloader/version.dll"' 'install : MelonLoader copié'
 check 'grep -q 47701 "$GAME/UserData/LmdMulti.cfg"' 'install : config gardée'
 check 'section_has_override && [[ $(count_override) == 1 ]]' 'install : override version dans [Software\\Wine\\DllOverrides]'
 check '[[ -f "$REG.lmdmulti-sauvegarde" ]]' 'install : sauvegarde de user.reg'
 check 'grep -q "^\"d3d11\"=\"native\"" "$REG" && grep -q "^\"x\"=\"y\"" "$REG"' 'install : reste du registre intact'
 run; check '[[ $(count_override) == 1 ]] && grep -q "déjà à jour" "$W/out.txt"' 'réinstallation : idempotente'
+check 'grep -q "LMD-Camera copié.*identique" "$W/out.txt"' 'réinstallation : LMD-Camera identique, signalé'
 
 LMDMULTI_ANSWER=n run uninstall
 check '[[ ! -e "$GAME/Mods/LmdMulti.dll" && -e "$GAME/version.dll" && $(count_override) == 1 ]]' 'désinstallation + n : MelonLoader et override gardés'
+check '[[ ! -e "$GAME/Mods/$CAM" ]]' 'désinstallation : LMD-Camera livré retiré'
 run; LMDMULTI_ANSWER=o run uninstall
+check 'grep -q "retirer aussi MelonLoader" "$W/out.txt"' 'désinstallation : LMD-Camera livré ne compte pas comme autre mod'
 check '[[ ! -e "$GAME/version.dll" && ! -d "$GAME/MelonLoader" && ! -d "$GAME/Mods" ]]' 'désinstallation + o : MelonLoader retiré'
 check '[[ $(count_override) == 0 ]] && grep -q "^\"d3d11\"=\"native\"" "$REG"' 'désinstallation : override retiré, reste intact'
 check '[[ -f "$GAME/UserData/LmdMulti.cfg" ]]' 'désinstallation : réglages gardés'
+
+setup; mkdir -p "$GAME/Mods" && echo ancienne >"$GAME/Mods/$CAM"
+run
+check 'cmp -s "$GAME/Mods/$CAM" "$DIST/fichiers/$CAM" && grep -q "remplace une autre version" "$W/out.txt"' 'LMD-Camera existant : remplacé, journalisé'
+echo joueur >"$GAME/Mods/$CAM"
+LMDMULTI_ANSWER=o run uninstall
+check 'grep -q joueur "$GAME/Mods/$CAM" && grep -q "LMD-Camera gardé" "$W/out.txt"' 'désinstallation, LMD-Camera différent : gardé et dit'
+check '[[ ! -e "$GAME/Mods/LmdMulti.dll" && -e "$GAME/version.dll" ]] && ! grep -q "retirer aussi" "$W/out.txt"' 'désinstallation, LMD-Camera différent : MelonLoader gardé sans question'
 
 setup; rm "$REG"
 run; code=$?

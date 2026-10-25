@@ -3,7 +3,7 @@
 #  1. analyse PSScriptAnalyzer (syntaxe compatible Windows PowerShell 5.1) ;
 #  2. installeur/désinstalleur PowerShell sous pwsh (conteneur podman), fausse arborescence Steam ;
 #  3. install-linux.sh avec une fausse arborescence Steam/Proton ;
-#  4. zip reproductible.
+#  4. paquet : LMD-Camera livré tel quel avec sa licence, zip reproductible.
 # Usage : tests/installer/run-tests.sh [--no-build]   (journal : /tmp/lmd-insttest/)
 # Le registre, les fenêtres, le pare-feu et l'UAC ne sont testables que sur un vrai Windows.
 set -euo pipefail
@@ -51,6 +51,15 @@ ensure_analyzer() { # 1.22.0 : les suivantes exigent pwsh ≥ 7.4.6
         'Save-Module -Name PSScriptAnalyzer -RequiredVersion 1.22.0 -Path /tmp/lmd-psmodules -Repository PSGallery'
 }
 
+check_camera_payload() { # LMD-Camera livré tel quel (même fichier que vendor/) avec sa licence
+    if cmp -s "$DIST/fichiers/LMD-Camera.dll" "$ROOT/vendor/LMD-Camera-1.1.0/LMD-Camera.dll" &&
+        grep -q 'MIT License' "$DIST/fichiers/LMD-Camera-LICENSE.txt"; then
+        echo "OK   LMD-Camera.dll tel quel + licence MIT dans fichiers/"
+    else
+        echo "ÉCHEC LMD-Camera.dll ou sa licence absents/modifiés dans fichiers/"; return 1
+    fi
+}
+
 check_reproducible() {
     bash "$ROOT/tools/make-dist.sh" --no-build | tail -n 2 >"$T/dist2.txt"
     if [[ "$(tail -n1 "$T/dist1.txt")" == "$(tail -n1 "$T/dist2.txt")" ]]; then
@@ -69,7 +78,7 @@ main() {
     echo "== Analyse (PS 5.1) =="; run_pwsh "$T/Analyze.ps1" "$DIST/fichiers/scripts" || fail=1
     echo "== Installeur PowerShell =="; run_pwsh "$T/InstallerTests.ps1" "$DIST" "$T" || fail=1
     echo "== install-linux.sh =="; bash "$HERE/linux-tests.sh" "$DIST" "$T/linux" || fail=1
-    echo "== Paquet =="; check_reproducible || fail=1
+    echo "== Paquet =="; check_camera_payload || fail=1; check_reproducible || fail=1
     [[ $fail == 0 ]] && echo "TOUS LES TESTS PASSENT" || echo "DES TESTS ÉCHOUENT"
     return $fail
 }

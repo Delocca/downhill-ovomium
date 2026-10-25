@@ -1,5 +1,6 @@
 # Désinstalleur LmdMulti (lancé par « Desinstaller LmdMulti.bat »).
-# Retire le mod et sa règle de pare-feu ; propose de retirer MelonLoader s'il n'y a pas d'autre mod.
+# Retire le mod, LMD-Camera (si c'est la copie livrée) et la règle de pare-feu ;
+# propose de retirer MelonLoader s'il n'y a pas d'autre mod.
 # Réglages (UserData) gardés. Mêmes paramètres de test que Install.ps1.
 param(
     [string]$GameDir = '',
@@ -12,7 +13,9 @@ param(
 . (Join-Path $PSScriptRoot 'Steam.ps1')
 . (Join-Path $PSScriptRoot 'Melon.ps1')
 . (Join-Path $PSScriptRoot 'Firewall.ps1')
+. (Join-Path $PSScriptRoot 'Camera.ps1')
 
+$script:Payload = Split-Path -Parent $PSScriptRoot
 $script:Notes = @()
 
 function Uninstall-Firewall {
@@ -50,6 +53,9 @@ function Invoke-Uninstall {
     if (-not (Wait-GameClosed)) { Show-Message 'Désinstallation annulée : le jeu est ouvert.' 'Warning'; return 23 }
     $dll = Join-Path (Join-Path $game.Dir 'Mods') 'LmdMulti.dll'
     if (Test-Path -LiteralPath $dll) { Remove-ToRecycleBin $dll } else { Write-Journal "Mod absent : $dll" }
+    # Avant le test « autres mods » : notre copie de LMD-Camera ne doit pas retenir MelonLoader.
+    $camera = Uninstall-CameraMod $game.Dir $script:Payload
+    Write-Journal "LMD-Camera : $camera"
     Uninstall-Firewall
     $melon = Uninstall-MelonIfUnused $game.Dir
     Write-Journal "MelonLoader : $melon"

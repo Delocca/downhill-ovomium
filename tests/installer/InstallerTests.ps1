@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $script:Failures = 0
 $scripts = Join-Path $Dist 'fichiers/scripts'
 $payloadMelon = Join-Path $Dist 'fichiers/melonloader'
+$camera = Join-Path $Dist 'fichiers/LMD-Camera.dll'
 
 function Check([bool]$Condition, [string]$Message) {
     if ($Condition) { Write-Host "OK   $Message" } else { Write-Host "ÉCHEC $Message"; $script:Failures++ }
@@ -61,6 +62,7 @@ function Test-FreshInstall {
     $code = Invoke-Installer 'Install.ps1' $e
     Check ($code -eq 0) "neuf : code 0 (obtenu $code)"
     Check (Test-Same (P $e.Game 'Mods/LmdMulti.dll') (P $Dist 'fichiers/LmdMulti.dll')) 'neuf : DLL copiée dans Mods'
+    Check (Test-Same (P $e.Game 'Mods/LMD-Camera.dll') $camera) 'neuf : LMD-Camera copié dans Mods'
     Check (Test-Same (P $e.Game 'version.dll') (P $payloadMelon 'version.dll')) 'neuf : version.dll de MelonLoader'
     Check (Test-Path (P $e.Game 'MelonLoader/net6/MelonLoader.dll')) 'neuf : dossier MelonLoader'
     Check ((Get-Content (P $e.Game 'UserData/LmdMulti.cfg') -Raw) -match 'Port = 47701') 'neuf : config existante intacte'
@@ -73,6 +75,7 @@ function Test-FreshInstall {
 
     $code = Invoke-Installer 'Install.ps1' $e
     Check ($code -eq 0 -and ((Get-Log $e) -match 'MelonLoader : à jour')) 'réinstallation : MelonLoader déjà à jour'
+    Check ((Get-Log $e) -match 'LMD-Camera copié : .*\(déjà là, identique\)') 'réinstallation : LMD-Camera identique, signalé'
     return $e
 }
 
@@ -136,9 +139,11 @@ function Test-Uninstall($Installed) {
     $e = $Installed
     $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Non'
     Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'Mods/LmdMulti.dll'))) 'désinstallation : DLL retirée'
+    Check (-not (Test-Path (P $e.Game 'Mods/LMD-Camera.dll'))) 'désinstallation : LMD-Camera livré retiré'
     Check (Test-Path (P $e.Game 'version.dll')) 'désinstallation + Non : MelonLoader gardé'
     [void](Invoke-Installer 'Install.ps1' $e)
     $code = Invoke-Installer 'Uninstall.ps1' $e
+    Check ((Get-Log $e) -match 'Question RetirerMelonLoader\].*-> Oui') 'désinstallation : LMD-Camera livré ne compte pas comme autre mod'
     Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'version.dll')) -and -not (Test-Path (P $e.Game 'MelonLoader'))) 'désinstallation (défaut Oui) : MelonLoader retiré'
     Check (-not (Test-Path (P $e.Game 'Mods'))) 'désinstallation : dossier Mods vide retiré'
     Check (Test-Path (P $e.Game 'UserData/LmdMulti.cfg')) 'désinstallation : réglages gardés'
@@ -150,6 +155,25 @@ function Test-Uninstall($Installed) {
     [void](Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Oui')
     Check ((Test-Path (P $e.Game 'version.dll')) -and (Test-Path (P $e.Game 'Mods/AutreMod.dll'))) 'désinstallation avec autre mod : MelonLoader gardé sans question'
     Check ((Get-Log $e) -notmatch 'Question RetirerMelonLoader') 'désinstallation avec autre mod : aucune question'
+}
+
+# LMD-Camera déjà présent : écrasé à l'installation ; à la désinstallation, gardé seulement s'il diffère de la copie livrée.
+function Test-CameraOwnership {
+    $e = New-FakeSteam 'camera-ancienne'
+    Write-Text (P $e.Game 'Mods/LMD-Camera.dll') 'ancienne camera'
+    $code = Invoke-Installer 'Install.ps1' $e
+    Check ($code -eq 0 -and (Test-Same (P $e.Game 'Mods/LMD-Camera.dll') $camera)) 'LMD-Camera existant : remplacé par la version livrée'
+    Check ((Get-Log $e) -match 'remplace une autre version') 'LMD-Camera existant : remplacement journalisé'
+
+    $e = New-FakeSteam 'camera-joueur'
+    [void](Invoke-Installer 'Install.ps1' $e)
+    Write-Text (P $e.Game 'Mods/LMD-Camera.dll') 'camera du joueur'
+    $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Oui'
+    Check ($code -eq 0 -and (Test-Path (P $e.Game 'Mods/LMD-Camera.dll'))) 'désinstallation, LMD-Camera différent : gardé'
+    Check (-not (Test-Path (P $e.Game 'Mods/LmdMulti.dll'))) 'désinstallation, LMD-Camera différent : LmdMulti retiré quand même'
+    $log = Get-Log $e
+    Check ($log -match 'LMD-Camera gardé' -and $log -match 'installé vous-même') 'désinstallation, LMD-Camera différent : dit dans le journal et le message'
+    Check ((Test-Path (P $e.Game 'version.dll')) -and $log -notmatch 'Question RetirerMelonLoader') 'désinstallation, LMD-Camera différent : MelonLoader gardé sans question'
 }
 
 function Test-VdfParsing {
@@ -168,6 +192,7 @@ Test-NotFound
 Test-OtherMelon
 Test-ForeignAndRepair
 Test-Uninstall $installed
+Test-CameraOwnership
 Test-VdfParsing
 if ($script:Failures -gt 0) { Write-Host "$($script:Failures) échec(s)"; exit 1 }
 Write-Host 'Installeur PowerShell : tous les scénarios passent'

@@ -1,8 +1,9 @@
 #!/bin/bash
-# Paquet de distribution : dist/LmdMulti-<version>.zip (installeur Windows, Linux, mod, MelonLoader).
+# Paquet de distribution : dist/LmdMulti-<version>.zip (installeur Windows, Linux, mod, MelonLoader, LMD-Camera).
 #   tools/make-dist.sh            compile le mod (Release) puis emballe
 #   tools/make-dist.sh --no-build emballe la DLL déjà compilée
-# Besoins : refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip (téléchargé si absent, empreinte vérifiée).
+# Besoins : refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip et vendor/LMD-Camera-1.1.0/LMD-Camera.dll
+# (téléchargés si absents, empreintes vérifiées).
 # Voir docs/distribution.md.
 set -euo pipefail
 
@@ -11,6 +12,12 @@ MELON_VERSION=0.7.3
 MELON_ZIP="$ROOT/vendor/MelonLoader.x64-$MELON_VERSION.zip"
 MELON_URL="https://github.com/LavaGang/MelonLoader/releases/download/v$MELON_VERSION/MelonLoader.x64.zip"
 MELON_SHA256=5b2b2f3d1cd42b59ec886c5bdc2663edae87a0097a4f4a8f58c0965a99dda416
+# Mod LMD-Camera de flo-st (vue à la première personne, MIT), livré tel quel.
+# Tag 1.1.0 = commit 84785d826359f886e76ab534c9565cf1f97c1ee4 de https://github.com/flo-st/LMD-Camera
+CAMERA_VERSION=1.1.0
+CAMERA_DLL="$ROOT/vendor/LMD-Camera-$CAMERA_VERSION/LMD-Camera.dll"
+CAMERA_URL="https://github.com/flo-st/LMD-Camera/releases/download/$CAMERA_VERSION/LMD-Camera.dll"
+CAMERA_SHA256=59ca8f0b191b056f5f4d871a18612a9e8f822303a877cde67df9189c8493b52b
 # Build Steam de LMD 1.6.0 avec lequel le mod a été testé (appmanifest_711540.acf, 2026-10-25).
 # L'installeur prévient si le jeu installé a un autre build.
 TESTED_BUILD=12535418
@@ -20,14 +27,14 @@ MOD_VERSION=$(sed -n 's/.*const string Version = "\([^"]*\)".*/\1/p' "$ROOT/src/
 NAME="LmdMulti-$MOD_VERSION"
 DLL="$ROOT/src/LmdMulti/bin/Release/net6.0/LmdMulti.dll"
 
-fetch_melon() {
-    if [[ ! -f "$MELON_ZIP" ]]; then
-        mkdir -p "$ROOT/vendor"
-        curl -fL -o "$MELON_ZIP.part" "$MELON_URL"
-        mv "$MELON_ZIP.part" "$MELON_ZIP"
+fetch_pinned() { # fichier url sha256 : télécharge si absent, puis vérifie l'empreinte épinglée
+    if [[ ! -f "$1" ]]; then
+        mkdir -p "$(dirname "$1")"
+        curl -fL -o "$1.part" "$2"
+        mv "$1.part" "$1"
     fi
-    echo "$MELON_SHA256  $MELON_ZIP" | sha256sum -c --quiet - ||
-        { echo "empreinte de $MELON_ZIP inattendue" >&2; exit 1; }
+    echo "$3  $1" | sha256sum -c --quiet - ||
+        { echo "empreinte de $1 inattendue" >&2; exit 1; }
 }
 
 build_mod() {
@@ -56,6 +63,8 @@ stage() { # dossier de travail → arborescence du zip
     unzip -q "$MELON_ZIP" -d "$out/fichiers/melonloader"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/LICENSE.md" "$out/fichiers/MelonLoader-LICENSE.md"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/NOTICE.txt" "$out/fichiers/MelonLoader-NOTICE.txt"
+    cp "$CAMERA_DLL" "$out/fichiers/LMD-Camera.dll"
+    to_windows "$src/licences/LMD-Camera-LICENSE.txt" "$out/fichiers/LMD-Camera-LICENSE.txt"
 }
 
 pack() { # dossier de travail → dist/NAME.zip (ordre et dates fixes : zip reproductible)
@@ -70,7 +79,8 @@ pack() { # dossier de travail → dist/NAME.zip (ordre et dates fixes : zip repr
 }
 
 main() {
-    fetch_melon
+    fetch_pinned "$MELON_ZIP" "$MELON_URL" "$MELON_SHA256"
+    fetch_pinned "$CAMERA_DLL" "$CAMERA_URL" "$CAMERA_SHA256"
     build_mod "${1:-}"
     [[ -f "$DLL" ]] || { echo "DLL absente : $DLL" >&2; exit 1; }
     WORK=$(mktemp -d /tmp/lmd-dist.XXXXXX)

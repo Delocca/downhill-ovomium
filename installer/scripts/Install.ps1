@@ -1,5 +1,5 @@
 # Installeur LmdMulti (lancé par « Installer LmdMulti.bat »).
-# Trouve le jeu, installe MelonLoader si besoin, copie le mod, ouvre le pare-feu (UAC), journalise.
+# Trouve le jeu, installe MelonLoader si besoin, copie le mod (et LMD-Camera), ouvre le pare-feu (UAC), journalise.
 # Paramètres de test : -SteamRoot / -GameDir (pas de registre), -Answers "Clé=Oui,Clé2=Non" (sans fenêtres).
 # Code de sortie : 0 réussi ; 21-24 annulé (expliqué à l'écran) ; 9 erreur ; 1 = PowerShell n'a pas pu lancer le script.
 param(
@@ -13,6 +13,7 @@ param(
 . (Join-Path $PSScriptRoot 'Steam.ps1')
 . (Join-Path $PSScriptRoot 'Melon.ps1')
 . (Join-Path $PSScriptRoot 'Firewall.ps1')
+. (Join-Path $PSScriptRoot 'Camera.ps1')
 
 $script:ModVersion = '@MOD_VERSION@'      # remplacés par tools/make-dist.sh
 $script:TestedBuildId = '@TESTED_BUILD@'
@@ -87,7 +88,8 @@ function Show-Success([string]$Dir, [string]$MelonStatus) {
 }
 
 function Invoke-Install {
-    if (-not (Test-Path -LiteralPath (Join-Path $script:Payload 'LmdMulti.dll'))) {
+    $files = @('LmdMulti.dll', $script:CameraName) | ForEach-Object { Join-Path $script:Payload $_ }
+    if (@($files | Where-Object { -not (Test-Path -LiteralPath $_) }).Count -gt 0) {
         Show-Message "Fichiers de l'installeur incomplets : extrayez tout le zip puis relancez." 'Error'
         return 21
     }
@@ -100,6 +102,7 @@ function Invoke-Install {
     Write-Journal "MelonLoader : $melon"
     if ($melon -eq 'abandon') { Show-Message 'Installation annulée : rien n''a été modifié.' 'Warning'; return 24 }
     Install-ModDll $game.Dir
+    Install-CameraMod $game.Dir $script:Payload
     Clear-DownloadMark (Join-Path $game.Dir 'Mods')
     Clear-DownloadMark (Join-Path $game.Dir 'MelonLoader')
     Clear-DownloadMark (Join-Path $game.Dir 'version.dll')

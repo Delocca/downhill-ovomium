@@ -2,7 +2,7 @@
 # LmdMulti pour Linux / Steam Deck (jeu Windows lancé par Proton). Sans sudo.
 #   bash install-linux.sh             installe (ou met à jour)
 #   bash install-linux.sh uninstall   désinstalle
-# Ce que fait l'installation : copie MelonLoader + LmdMulti.dll dans le dossier du jeu, puis
+# Ce que fait l'installation : copie MelonLoader, LmdMulti.dll et LMD-Camera.dll dans le dossier du jeu, puis
 # règle la DLL « version » en « native,builtin » dans le registre du préfixe Proton du jeu
 # (compatdata/711540/pfx/user.reg, copie de sauvegarde à côté), pour que Wine charge MelonLoader.
 # Variables de test : LMDMULTI_STEAM_ROOTS (dossiers Steam séparés par « : »),
@@ -12,6 +12,7 @@ set -euo pipefail
 
 APP_ID=711540
 EXE=LMD_Win_x64.exe
+CAMERA=LMD-Camera.dll
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAYLOAD="$HERE/fichiers"
 
@@ -22,6 +23,8 @@ ask() { # ask "question" défaut(o|n) → 0 si oui
     local answer="${LMDMULTI_ANSWER:-}"
     if [[ -z "$answer" && -t 0 ]]; then
         read -r -p "$1 [o/n, défaut $2] " answer || true
+    else
+        say "$1 [o/n, défaut $2]"
     fi
     answer="${answer:-$2}"
     say "  -> $answer"
@@ -121,12 +124,33 @@ install_melon() {
     fi
 }
 
+install_camera() { # mod LMD-Camera (flo-st, MIT), livré tel quel ; écrase une version existante
+    local target="$GAME/Mods/$CAMERA" detail=""
+    if [[ -e "$target" ]]; then
+        if cmp -s "$PAYLOAD/$CAMERA" "$target"; then detail=" (déjà là, identique)"
+        else detail=" (remplace une autre version)"; fi
+    fi
+    cp "$PAYLOAD/$CAMERA" "$target"
+    say "Mod LMD-Camera copié : $target$detail"
+}
+
+uninstall_camera() { # retire LMD-Camera seulement si identique à la copie livrée (sinon : installée par le joueur)
+    local target="$GAME/Mods/$CAMERA"
+    [[ -e "$target" ]] || return 0
+    if [[ -f "$PAYLOAD/$CAMERA" ]] && cmp -s "$PAYLOAD/$CAMERA" "$target"; then
+        remove_path "$target"
+    else
+        say "LMD-Camera gardé : $target n'est pas la copie installée par LmdMulti (supprime-le si tu n'en veux plus)."
+    fi
+}
+
 do_install() {
-    [[ -f "$PAYLOAD/LmdMulti.dll" ]] || die "fichiers manquants : extrais tout le zip."
+    [[ -f "$PAYLOAD/LmdMulti.dll" && -f "$PAYLOAD/$CAMERA" ]] || die "fichiers manquants : extrais tout le zip."
     install_melon
     mkdir -p "$GAME/Mods"
     cp "$PAYLOAD/LmdMulti.dll" "$GAME/Mods/LmdMulti.dll"
     say "Mod copié : $GAME/Mods/LmdMulti.dll"
+    install_camera
     [[ -f "$GAME/UserData/LmdMulti.cfg" ]] && say "Réglages existants gardés : $GAME/UserData/LmdMulti.cfg"
     set_override set
     say "" "Installé ! Lance le jeu depuis Steam." \
@@ -136,6 +160,7 @@ do_install() {
 
 do_uninstall() {
     remove_path "$GAME/Mods/LmdMulti.dll"
+    uninstall_camera # avant le test « autres mods » : notre copie ne doit pas retenir MelonLoader
     if [[ -n "$(other_mods)" ]]; then
         say "MelonLoader gardé : d'autres mods s'en servent."
     elif [[ -e "$GAME/version.dll" || -d "$GAME/MelonLoader" ]] &&

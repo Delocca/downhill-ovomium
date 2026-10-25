@@ -29,8 +29,9 @@ enter() {
         local t=0; until [ -n "$(win)" ]; do sleep 2; t=$((t+1)); [ $t -gt 60 ] && { echo "pas de fenêtre"; return 1; }; done
         # SkipIntro : attendre que le mod ait passé l'écran titre ; sinon l'écran titre met ~28 s à répondre
         t=0; until grep -aq "intro : écran titre passé" "$LOG"; do sleep 1; t=$((t+1)); [ $t -gt 40 ] && break; done
-        if grep -aq "intro : écran titre passé" "$LOG"; then presses=5; sleep 4; else sleep 2; fi
+        sleep 2
     fi
+    grep -aq "intro : écran titre passé" "$LOG" && presses=5
     local before; before=$(grep -ac "piste locale : [A-Z]" "$LOG")
     for _ in $(seq "$presses"); do keys Return; sleep 2.6; done
     local t=0; until [ "$(grep -ac "piste locale : [A-Z]" "$LOG")" -gt "$before" ]; do

@@ -9,7 +9,7 @@ tools/make-dist.sh             # compile src/LmdMulti (Release) puis emballe
 tools/make-dist.sh --no-build  # emballe la DLL déjà compilée
 ```
 
-→ `dist/LmdMulti-<version>.zip` (version lue dans `LmdMultiMod.Version`) et son SHA-256. Besoins : `refs/` (compilation), `vendor/MelonLoader.x64-0.7.3.zip` (téléchargé depuis la release GitHub officielle s'il manque ; empreinte SHA-256 vérifiée, épinglée dans le script). Zip reproductible : ordre trié, dates fixées à celle du dernier commit.
+→ `dist/LmdMulti-<version>.zip` (version lue dans `LmdMultiMod.Version`) et son SHA-256. Besoins : `refs/` (compilation), `vendor/MelonLoader.x64-0.7.3.zip` et `vendor/LMD-Camera-1.1.0/LMD-Camera.dll` (téléchargés depuis les releases GitHub officielles s'ils manquent ; empreintes SHA-256 vérifiées, épinglées dans le script). Zip reproductible : ordre trié, dates fixées à celle du dernier commit.
 
 Le script convertit pour Windows : fins de ligne CRLF partout (un .bat en LF casse `goto`), BOM UTF-8 sur les `.ps1` et le `LISEZ-MOI.txt` (sans BOM, Windows PowerShell 5.1 lit en ANSI : accents cassés), et remplace `@MOD_VERSION@`, `@MELON_VERSION@`, `@TESTED_BUILD@`. Les sources dans `installer/` restent en UTF-8/LF sans BOM.
 
@@ -27,7 +27,9 @@ LmdMulti-<v>/
     LmdMulti.dll               le mod (LmdExplorer n'est jamais livré)
     melonloader/               archive officielle MelonLoader 0.7.3 extraite (version.dll + MelonLoader/)
     MelonLoader-LICENSE.md, MelonLoader-NOTICE.txt   Apache-2.0 (aussi dans melonloader/MelonLoader/Documentation)
-    scripts/                   Common, Steam, Melon, Firewall, Install, Uninstall, Elevated (.ps1)
+    LMD-Camera.dll             mod de vue à la 1re personne de flo-st, 1.1.0, tel quel
+    LMD-Camera-LICENSE.txt     sa licence MIT (source : installer/licences/, CRLF)
+    scripts/                   Common, Steam, Melon, Camera, Firewall, Install, Uninstall, Elevated (.ps1)
 ```
 
 Noms de fichiers en ASCII (l'extracteur de zip de Windows gère mal les noms accentués de certains zips).
@@ -47,7 +49,9 @@ Noms de fichiers en ASCII (l'extracteur de zip de Windows gère mal les noms acc
 
 **MelonLoader.** Version installée lue dans les métadonnées de `version.dll` (sinon `MelonLoader/net6/MelonLoader.dll`). Absent → installé ; même version → rien (réparé si incomplet) ; autre version → question (Oui recommandé si plus ancienne, Non si plus récente), l'ancien part à la corbeille ; `version.dll` qui n'est pas MelonLoader → question, Non par défaut (= abandon sans rien modifier). `UserData/` n'est jamais touché (la config `LmdMulti.cfg` est créée par le mod lui-même).
 
-**Désinstalleur.** Retire `Mods/LmdMulti.dll` (corbeille) et la règle du groupe `LmdMulti` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde `UserData/`.
+**LMD-Camera (vue à la première personne).** Mod MelonLoader de flo-st (https://github.com/flo-st/LMD-Camera, licence MIT), livré **tel quel** : release officielle 1.1.0 (tag = commit `84785d8`), empreinte SHA-256 épinglée dans `make-dist.sh` (`CAMERA_SHA256`), licence copiée à côté (`installer/licences/LMD-Camera-LICENSE.txt`, exigence de la MIT) et créditée dans le LISEZ-MOI. Les touches 1/2/3 et `UserData/LMD-Camera.cfg` sont celles du mod. L'installeur copie `Mods/LMD-Camera.dll` en écrasant toute version existante (journalisé : « identique » ou « remplace une autre version »). **Règle de désinstallation** : le fichier n'est retiré que s'il est identique à `fichiers/LMD-Camera.dll` du paquet (SHA-256 sous Windows, `cmp` sous Linux) ; sinon c'est une copie du joueur, gardée et signalée (journal + message final). Comparer au fichier livré plutôt qu'à une empreinte recopiée dans les scripts : rien à dupliquer ni à tenir à jour. Limite : désinstaller avec un paquet livrant une autre version de LMD-Camera que celle installée garde le fichier. Ce retrait a lieu **avant** le test « autres mods », pour que notre copie ne retienne pas MelonLoader.
+
+**Désinstalleur.** Retire `Mods/LmdMulti.dll` (corbeille), `Mods/LMD-Camera.dll` s'il est identique à la copie livrée (voir ci-dessus) et la règle du groupe `LmdMulti` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde `UserData/`.
 
 **Journal** : `LmdMulti-installation.log` / `LmdMulti-desinstallation.log` à côté des `.bat` (ou `%TEMP%` si le dossier n'est pas inscriptible) ; l'étape administrateur écrit dans le même fichier.
 
@@ -55,7 +59,7 @@ Noms de fichiers en ASCII (l'extracteur de zip de Windows gère mal les noms acc
 
 ## Linux / Steam Deck : `install-linux.sh`
 
-Sans sudo, jeu fermé. Trouve le jeu (dossiers Steam natif, Flatpak, Snap ; `libraryfolders.vdf`, `appmanifest_711540.acf`), copie MelonLoader (comparaison octet à octet ; autre version → question) et la DLL, puis règle l'override dans le **registre du préfixe Proton** : `compatdata/711540/pfx/user.reg`, section `[Software\\Wine\\DllOverrides]`, `"version"="native,builtin"` (copie `user.reg.lmdmulti-sauvegarde` avant la première modification). Choisi plutôt que l'option de lancement Steam (`WINEDLLOVERRIDES="version=n,b" %command%`) : celle-ci vit dans `localconfig.vdf`, que Steam réécrit tant qu'il tourne (modifiable seulement Steam fermé, fragile) ; `user.reg` n'est réécrit que par Wine, donc sûr jeu fermé. C'est la méthode utilisée chez Edia. Si le préfixe n'existe pas encore (jeu jamais lancé), le script le dit et donne l'option de lancement en repli. `uninstall` retire la DLL, et sur accord MelonLoader et l'override. À refaire si une mise à jour de Proton recrée le préfixe.
+Sans sudo, jeu fermé. Trouve le jeu (dossiers Steam natif, Flatpak, Snap ; `libraryfolders.vdf`, `appmanifest_711540.acf`), copie MelonLoader (comparaison octet à octet ; autre version → question), la DLL et LMD-Camera, puis règle l'override dans le **registre du préfixe Proton** : `compatdata/711540/pfx/user.reg`, section `[Software\\Wine\\DllOverrides]`, `"version"="native,builtin"` (copie `user.reg.lmdmulti-sauvegarde` avant la première modification). Choisi plutôt que l'option de lancement Steam (`WINEDLLOVERRIDES="version=n,b" %command%`) : celle-ci vit dans `localconfig.vdf`, que Steam réécrit tant qu'il tourne (modifiable seulement Steam fermé, fragile) ; `user.reg` n'est réécrit que par Wine, donc sûr jeu fermé. C'est la méthode utilisée chez Edia. Si le préfixe n'existe pas encore (jeu jamais lancé), le script le dit et donne l'option de lancement en repli. `uninstall` retire la DLL, LMD-Camera s'il est identique à la copie livrée, et sur accord MelonLoader et l'override. À refaire si une mise à jour de Proton recrée le préfixe.
 
 ## Tests
 
@@ -65,8 +69,8 @@ tests/installer/run-tests.sh [--no-build]
 
 Emballe, extrait le zip dans `/tmp/lmd-insttest/`, puis :
 1. **Analyse statique** (PSScriptAnalyzer 1.22.0 dans le conteneur `mcr.microsoft.com/powershell`) : syntaxe, commandes et types compatibles **Windows PowerShell 5.1** (profil Windows 10), BOM, erreurs d'analyse. Vérifié qu'elle attrape `??`, le ternaire et un paramètre propre à PS 7.
-2. **Scénarios PowerShell** sous pwsh (Linux, sans fenêtres, réponses par `-Answers`), sur une fausse arborescence Steam à deux bibliothèques (chemin avec espaces et accents) : installation neuve (jeu dans la 2e bibliothèque, config existante intacte), réinstallation (« à jour »), jeu introuvable (code 22, dossier choisi à la main, dossier invalide refusé), MelonLoader plus ancien (Oui / défaut Oui, ancien retiré, autres mods signalés et intacts), plus récent (gardé par défaut), `version.dll` étranger (abandon sans rien modifier / remplacement), MelonLoader incomplet (réparé), autre build du jeu (avertissement), désinstallation (Non → MelonLoader gardé ; défaut → retiré, `Mods` vide retiré, réglages gardés ; autre mod présent → gardé sans question), lecture VDF (format récent avec chemins Windows échappés, ancien format).
-3. **`install-linux.sh`** sur une fausse arborescence Steam/Proton : installation, override dans la bonne section sans toucher au reste du registre, sauvegarde, idempotence, désinstallation (avec/sans MelonLoader), préfixe absent, autre MelonLoader, jeu introuvable.
-4. **Zip reproductible** (deux emballages → même SHA-256).
+2. **Scénarios PowerShell** sous pwsh (Linux, sans fenêtres, réponses par `-Answers`), sur une fausse arborescence Steam à deux bibliothèques (chemin avec espaces et accents) : installation neuve (jeu dans la 2e bibliothèque, config existante intacte), réinstallation (« à jour »), jeu introuvable (code 22, dossier choisi à la main, dossier invalide refusé), MelonLoader plus ancien (Oui / défaut Oui, ancien retiré, autres mods signalés et intacts), plus récent (gardé par défaut), `version.dll` étranger (abandon sans rien modifier / remplacement), MelonLoader incomplet (réparé), autre build du jeu (avertissement), désinstallation (Non → MelonLoader gardé ; défaut → retiré, `Mods` vide retiré, réglages gardés ; autre mod présent → gardé sans question), LMD-Camera (copié, « identique » à la réinstallation, ancienne version écrasée ; à la désinstallation retiré s'il est identique et ne retient alors pas MelonLoader, gardé et signalé s'il diffère, MelonLoader alors gardé sans question), lecture VDF (format récent avec chemins Windows échappés, ancien format).
+3. **`install-linux.sh`** sur une fausse arborescence Steam/Proton : installation, override dans la bonne section sans toucher au reste du registre, sauvegarde, idempotence, désinstallation (avec/sans MelonLoader), LMD-Camera (mêmes cas que sous PowerShell), préfixe absent, autre MelonLoader, jeu introuvable.
+4. **Paquet** : `LMD-Camera.dll` identique à `vendor/` et licence présente ; zip reproductible (deux emballages → même SHA-256 ; échoue à tort si la DLL du mod est recompilée pendant les tests).
 
 Hors de portée sous Linux (à tester sur un vrai Windows, voir la liste dans le rapport de livraison) : registre Steam, fenêtres (MessageBox, sélecteur de dossier), UAC, cmdlets du pare-feu et des profils réseau, corbeille, détection du jeu ouvert, SmartScreen / Smart App Control. Sous Wine 9, PowerShell 7 (.NET 8 et .NET 6) ne démarre pas ; seul le `.bat` a pu y être lancé (cas « zip non extrait » vérifié).
