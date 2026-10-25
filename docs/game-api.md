@@ -47,12 +47,12 @@ Hiérarchie vérifiée sous `Bike(Clone)` :
   - `bike_ragDoll_bike` : `bike_front` et `bike_rear` ;
   - `bike/Bind_JNT/…` : même arborescence et mêmes noms d'os que le vélo, pilotée par des `ParentConstraint` (Megagon.Framework).
 - Pendant un crash, envoyer donc les os de `RagDoll(Clone)/bike/Bind_JNT` (même format) : fait par LmdMulti, les 31 os sont trouvés dans les deux arbres et `RagDoll(Clone).activeInHierarchy` bascule bien au crash [vérifié, batchmode].
-- Os qui translatent (positions locales qui varient, relevé LmdMulti `DebugLog`, vélo bloqué au départ en batchmode) : `cog` 27 cm, `spine_1` 64 cm, `hand_L` 20 cm, `hand_R` 3 cm (IK des mains) [vérifié] ; en roulant : à relever en session bureau.
+- Os qui translatent hors crash (amplitude des positions locales, relevé LmdMulti `DebugLog` en conduite réelle sur 1600 poses) : `cog` 35 cm, `spine_1` 84 cm, `hand_L` 20 cm, `shoulder_L` 7 cm, `spine_3` 6 cm, `spine_2` 5 cm, `wheel_front_axis` 3 cm, `hand_R` 3 cm, `shoulder_R` 1 cm [vérifié]. Suspension arrière et pédalier : aucun mouvement relevé.
 - Enum `CrashReason` : NoCrash=0, LostControl=1, OutOfBounds=10, ObstacleHit=11, ExternalTrigger=12, Water=13, ObstacleRock=14, ObstacleTree=15, ObstacleCactus=16, Lava=19, FallHeight=20, FallTime=21, ExtremSlope=22, BottomOut=23, BackwardMovement=24, FallImpact=25, HardSlide=26, Unknown=99 [signatures].
 
 ## 3. Marionnette (fantôme visuel)
 
-Méthode vérifiée (pas d'exception, hiérarchie conforme ; **rendu non vu**) :
+Méthode vérifiée, rendu compris (écran virtuel, 2026-10-25 : marionnettes visibles, pose conforme en roulant et pendant un crash) :
 1. Créer un parent inactif, y faire `Object.Instantiate(bikeGO, parentInactif)`. Ainsi, aucun `Awake`/`OnEnable` des scripts copiés ne s'exécute.
 2. `DestroyImmediate`, dans cet ordre : `Joint`, `MonoBehaviour`, `Collider`, `Rigidbody`.
 3. Désactiver les `Animator`, détacher la copie du parent, puis l'activer.
@@ -64,7 +64,9 @@ Méthode vérifiée (pas d'exception, hiérarchie conforme ; **rendu non vu**) :
 - Limite : la copie a l'apparence (skin) du joueur local. Pour l'apparence de chaque joueur, transmettre son profil (voir § 6 `GameProperties.ActiveRider*`) et le reconstruire. La fabrique existe (`ObjectPublicLi1CoHaFaHeBaSiReSiUnique`, méthodes `GameObject …(VehicleConfiguration, List<ColorizedMesh>…, HairType, …)`) [signatures], mais elle n'a pas été testée.
 - Lumières : la copie garde les `Light` des phares (groupe `lights`, inactif de jour). LmdMulti désactive ce groupe sur ses marionnettes.
 - Matériaux : vélo + rider = un seul `SkinnedMeshRenderer` `mergedMesh`, matériau `bike (Instance)`, shader `Megagon/Standard VertexColor Simple` (propriétés `_Color`, `_MainTex`, `_Glossiness`, `_Metallic`, `_UV_GLOSSY`, `_EMISSIVE`, `_EmissiveColor`, `_EmissiveTex`) ; cheveux idem. En batchmode, `Material.HasProperty("_Color")` répond faux alors que `shader.FindPropertyIndex("_Color")` le trouve [vérifié].
-- LmdMulti pilote ses marionnettes ainsi (racine + `Bind_JNT` en monde, os en local) ; la position relue dans Unity correspond à la pose visée, crash compris [vérifié, batchmode] ; rendu : non vu.
+- Les couleurs du modèle (tenue, vélo personnalisés) sont dans les **couleurs de sommets** du mesh ; `_Color` ne fait que les moduler, d'où une teinte peu visible. `_EMISSIVE`/`_EmissiveColor` posés par `MaterialPropertyBlock` : sans effet visible [vérifié].
+- Transparence : `Legacy Shaders/Particles/Alpha Blended` (présent dans la build, `Shader.Find` le trouve) rend le modèle avec ses couleurs de sommets × `_TintColor`, translucide et non éclairé [vérifié]. Autres shaders chargés utilisables : `Mobile/Particles/Alpha Blended`, `Sprites/Default`, `Unlit/Color`, `Standard` (variante Fade non vérifiée).
+- LmdMulti pilote ses marionnettes ainsi (racine + `Bind_JNT` en monde, os en local) ; la position relue dans Unity correspond à la pose visée, crash compris [vérifié] ; rendu vu sur écran virtuel [vérifié].
 
 ## 4. Pistes : identification et chargement automatique
 
@@ -140,9 +142,19 @@ La fabrique `ObjectPublicLi1CoHaFaHeBaSiReSiUnique.Method_Public_InterfacePublic
 
 Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus sûr.
 
+## 8. Pièges de l'interop (cette build) et interface du jeu
+
+- **`Camera.allCameras` : plantage natif immédiat du jeu** (aucune exception, le processus meurt) [vérifié]. Utiliser `Camera.main`, sinon `Object.FindObjectsOfType<Camera>()` (avec parcimonie).
+- `ColorUtility.ToHtmlStringRGB` : `NotSupportedException: Method unstripping failed` [vérifié]. Écrire l'hexadécimal soi-même.
+- Pause : `Time.timeScale` **ne passe pas** à 0 dans le menu pause. Détection fiable : l'écran `PauseScreen` de la scène (pas le prefab : `gameObject.scene.IsValid()`) a `isActiveAndEnabled` vrai [vérifié]. L'état `GameStateManager` reste à 100.
+- OnGUI est appelé plusieurs fois par image (Layout, Repaint…) : ne dessiner qu'à `EventType.Repaint`.
+- Touches clavier du jeu (écran Contrôles) : Haut accélérer, Bas freiner, Gauche/Droite diriger, Maj sprinter, Retour arrière redémarrer au point de contrôle ; Entrée valide les menus et recommence après un crash ; Échap = pause (curseur sur « Continuer » à l'ouverture ; « Recommencer la tentative » = 3e entrée, « Quitter vers le menu » = 6e). Échap pendant un crash n'ouvre pas la pause.
+- Menus depuis l'écran titre : six fois Entrée (titre, Commencer la partie, montagne, piste, défi, vélo) lancent la piste sélectionnée. La caméra et la direction du clavier suivent le vélo.
+- Recette de conduite sur Sierra Rivera piste 2 (`CA_01_A2`), départ : Haut 1,3 s, Haut+Gauche 0,8 s, Haut 1,5 s tient la piste environ 5 s avant une chute (`tools/lmd-keys.sh drive …`).
+
 ## Limites des tests et besoins
 
-- **Solution retenue (2026-10-25) : rendu complet sur écran virtuel Xorg « dummy »**. Commandes : `tools/lmd-virtual.sh start|stop|shot` (`:98`, DXVK sur la NVIDIA, config `tools/xdummy.conf`, paquet `xserver-xorg-video-dummy`). Le dummy annonce 60 Hz, ce qui évite le plantage de DXVK. Écran titre rendu, conduite à valider. Pour voir en direct : `tools/watch-virtual.sh`. Ce qui suit est l'historique avant cette solution.
+- **Solution retenue (2026-10-25) : rendu complet sur écran virtuel Xorg « dummy »**. Commandes : `tools/lmd-virtual.sh start|stop|shot` (`:98`, DXVK sur la NVIDIA, config `tools/xdummy.conf`, paquet `xserver-xorg-video-dummy`). Le dummy annonce 60 Hz, ce qui évite le plantage de DXVK. Rendu, menus et conduite au clavier vérifiés (`tools/lmd-keys.sh`), 110-150 images/s en 640×480 (pas de synchro verticale). Pour voir en direct : `tools/watch-virtual.sh`. Ce qui suit est l'historique avant cette solution.
 - **Rendu sous Xvfb impossible** : le jeu reste bloqué à la 1re frame (« Loading Addons... », écran noir).
   - Observé avec et sans MelonLoader, dans et hors du bac à sable, et avec `runInBackground` forcé.
   - Selon winedbg, le fil principal tourne en boucle dans la player loop.
@@ -154,8 +166,7 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 - **Ancien contournement** : `LMD_SCREEN=xvfb LMD_ARGS="-batchmode -nographics" tools/lmd-virtual.sh start`.
   - Menus, profil, chargement de pistes, vélo et ragdoll fonctionnent : tout ce qui est marqué [vérifié] l'a été ainsi.
   - En revanche, le sol n'a pas de collision dans ce mode : au déblocage, le vélo tombe et crashe (`FallTime`).
-- **Non testable sans rendu ni conduite**, donc à faire dans une session scriptée sur le bureau d'Edia :
-  - rendu de la marionnette et recopie de pose (commande `puppet`) ;
+- **Encore à vérifier en roulant** (désormais faisable sur l'écran virtuel, avec `tools/lmd-keys.sh`) ; le rendu des marionnettes l'a été :
   - événements section / arrivée / checkpoint et valeurs du chrono en roulant ;
   - restart au checkpoint ;
   - effet visuel de `tostart`.

@@ -71,15 +71,16 @@ guide() {
 
   ┌─────────────────────────── Mode d'emploi ───────────────────────────┐
   │ F10 dans le jeu = capture d'écran (à faire à chaque étape ✔).       │
-  │ F8 = panneau des joueurs · F9 = écho on/off.                        │
+  │ F8 = panneau des joueurs · F9 = écho on/off · F7 = aspect fantômes. │
   └─────────────────────────────────────────────────────────────────────┘
   1. MENU : en haut à droite, le panneau « LmdMulti 0.1.0 · écoute sur le
      port 47700 · écho ». Bot-orbite y est listé (menu, ping en ms) et un
      message « Bot-orbite a rejoint » s'affiche au centre.            ✔ F10
-  2. Lance une piste. Au départ, deux fantômes bleutés :
-     - « (écho) » (pseudo jaune) = toi, 2 s en retard ;
+  2. Lance une piste. Au départ, deux fantômes semi-transparents :
+     - « (écho) » (pseudo ambre) = toi, 2 s en retard ;
      - « Bot-orbite » qui tourne autour de toi à 4 m en copiant ta pose.
-     Pseudos au-dessus des têtes, panneau : « fantôme » sur les 2 lignes. ✔ F10
+     Pseudos colorés au-dessus des têtes, pastilles de même couleur dans
+     le panneau. F7 : essaie les 3 aspects (translucide, teinté, normal). ✔ F10
   3. Roule 30 s. Regarde ton écho : fluide ? vélo complet (roues qui
      tournent, suspension, pédalier) ? rider cohérent (mains au guidon,
      pieds aux pédales, tête, cheveux/casque) ?                    ✔ F10 ×2
