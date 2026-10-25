@@ -55,6 +55,7 @@ internal static class Commands
         ["tocp"] = n => PlayerManager.Method_Public_Static_Void_Transform_0(CheckpointTransform(n)),         // tocp [N] (défaut : avant-dernier ; f = arrivée)
         ["timer"] = _ => Out.Info(TrackProbe.TimerLine()),
         ["record"] = id => LocalRecords(id),                                                                // record RO_01_A4
+        ["online"] = id => OnlineScores.Read(id),                                                           // online RO_01_A4 (lecture seule)
 
         ["call"] = spec => Invoker.Call(spec),
     };

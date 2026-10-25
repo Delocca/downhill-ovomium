@@ -38,6 +38,7 @@ public class ExplorerMod : MelonMod
             Out.Info($"battement: frame={Time.frameCount} unscaledTime={Time.unscaledTime:F1} scène={UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}");
         }
         if (now >= _nextPoll) { _nextPoll = now + 1f; Commands.Poll(); WatchState(); AutoActions(now); }
+        OnlineScores.Poll();
         if (now >= _nextStatus)
         {
             _nextStatus = now + 2f;

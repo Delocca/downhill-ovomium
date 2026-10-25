@@ -98,7 +98,7 @@ internal sealed class RaceController
     /// maintien 1,5 s = abandonner / (hôte) annuler. Refuser une invitation = la laisser expirer.
     public void HandleKeys(double now, string myName)
     {
-        _pad.Update(now);
+        Log.Try("manette", () => _pad.Update(now)); // une erreur de Rewired ne doit pas priver du clavier
         var state = new RaceButtonState(Input.GetKey(Config.Key(Config.RaceKey)), _pad.Back, _pad.A, _pad.B);
         RaceKeys.Track(state.Key, state.PadModifier, _pad.LastWasPad);
         switch (Buttons.Update(state, now, CanGo(now), CanQuit))
