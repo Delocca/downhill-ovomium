@@ -21,26 +21,45 @@ internal static class Program
         catch (Exception e) { Console.Error.WriteLine(e.Message); return 2; }
         if (o == null) { Console.WriteLine(BotOptions.Usage); return 0; }
 
-        IPoseSource source = new OrbitSource(o.Radius);
-        string track = o.Track;
+        string recTrack = null;
+        List<PoseFrame> frames = null;
         if (o.Replay != null)
         {
             string path = BotOptions.ResolveReplay(o.Replay);
-            var (recTrack, frames) = PoseRecorder.Read(path);
-            var replay = new ReplaySource(frames);
-            source = replay;
-            track ??= recTrack;
-            Say($"rejeu de {path} : {frames.Count} poses, {replay.LengthS:F1} s, piste {recTrack}");
+            (recTrack, frames) = PoseRecorder.Read(path);
+            uint firstMs = frames.Count > 0 ? frames[0].TimeMs : 0;
+            frames = ReplaySource.TrimIdleStart(frames);
+            if (frames.Count > 0 && frames[0].TimeMs > firstMs) Say($"attente au départ retirée : {(frames[0].TimeMs - firstMs) / 1000.0:F1} s");
+            Say($"rejeu de {path} : {frames.Count} poses, {new ReplaySource(frames).LengthS:F1} s, piste {recTrack}");
         }
-
-        using var node = new UdpNode(o.ToNodeOptions());
-        if (!node.Start()) { Console.Error.WriteLine(node.Status); return 1; }
-        Say($"{o.Name} : {node.Status}, protocole v{ProtocolInfo.Version}, annonces vers le port {o.TargetPort}");
         var stop = new ManualResetEventSlim();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Set(); };
+        // kill / pkill (SIGTERM) : arrêt propre aussi, avec « Bye ». Utile en arrière-plan, où Ctrl+C
+        // (SIGINT) est souvent ignoré par le shell qui l'a lancé.
+        using var term = System.Runtime.InteropServices.PosixSignalRegistration.Create(
+            System.Runtime.InteropServices.PosixSignal.SIGTERM, c => { c.Cancel = true; stop.Set(); });
+        var threads = new List<Thread>();
+        int failures = 0;
+        for (int i = 0; i < o.Count; i++)
+        {
+            var b = o.ForInstance(i);
+            IPoseSource source = frames != null ? new ReplaySource(frames, 1500.0 * i) : new OrbitSource(b.Radius, 2.4f * i);
+            var t = new Thread(() => { if (!RunBot(b, source, b.Track ?? recTrack, stop)) Interlocked.Increment(ref failures); }) { Name = b.Name };
+            t.Start();
+            threads.Add(t);
+        }
+        foreach (var t in threads) t.Join();
+        return failures > 0 ? 1 : 0;
+    }
+
+    private static bool RunBot(BotOptions o, IPoseSource source, string track, ManualResetEventSlim stop)
+    {
+        using var node = new UdpNode(o.ToNodeOptions());
+        if (!node.Start()) { Console.Error.WriteLine($"{o.Name} : {node.Status}"); return false; }
+        Say($"{o.Name} : {node.Status}, protocole v{ProtocolInfo.Version}, annonces vers le port {o.TargetPort}");
         Run(o, node, source, track, stop);
-        Say("arrêt (Bye envoyé)");
-        return 0;
+        Say($"{o.Name} : arrêt (Bye envoyé)");
+        return true;
     }
 
     private static void Run(BotOptions o, UdpNode node, IPoseSource source, string fixedTrack, ManualResetEventSlim stop)
@@ -64,7 +83,7 @@ internal static class Program
                 Messages.WritePose(w, node.Id, f);
                 node.SendPose(w.ToArray());
             }
-            if (NetClock.NowMs >= nextReport) { nextReport += 2000; Report(node, stats, track); }
+            if (o.Index == 0 && NetClock.NowMs >= nextReport) { nextReport += 2000; Report(node, stats, track); }
             stop.Wait(1000 / o.Rate);
         }
     }

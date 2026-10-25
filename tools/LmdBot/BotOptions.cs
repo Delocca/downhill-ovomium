@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LmdMulti.Core.Net;
+using LmdMulti.Core.Poses;
 
 namespace LmdBot;
 
@@ -19,9 +20,12 @@ internal sealed class BotOptions
   --replay FICHIER  rejoue en boucle un enregistrement .lmdrec ; « latest » = le plus récent du jeu
   --radius M        mode orbite (sans --replay) : tourne autour du joueur à M mètres (défaut 4)
   --rate HZ         poses par seconde (défaut 25)
+  --count N         simule N joueurs (ports N, N+1…, pseudos NOM-1, NOM-2…) : orbites de rayons
+                    croissants, ou rejeux décalés de 1,5 s chacun le long de la piste
   --duration S      s'arrête après S secondes (défaut : Ctrl+C)";
 
-    public int Port = 47710, TargetPort = 47700, Rate = 25;
+    public int Port = 47710, TargetPort = 47700, Rate = 25, Count = 1;
+    public int Index; // rang du bot simulé (0 = le seul ou le premier, qui affiche le rapport détaillé)
     public List<string> Peers = new();
     public bool Broadcast = true;
     public string Name = "LmdBot", Track, Replay;
@@ -45,6 +49,7 @@ internal sealed class BotOptions
                 case "--replay": o.Replay = Next(); break;
                 case "--radius": o.Radius = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--rate": o.Rate = Math.Clamp(int.Parse(Next()), 1, 60); break;
+                case "--count": o.Count = Math.Clamp(int.Parse(Next()), 1, 64); break;
                 case "--duration": o.DurationS = double.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                 case "-h": case "--help": case "help": return null;
                 default: throw new ArgumentException($"option inconnue : {args[i]}");
@@ -53,19 +58,41 @@ internal sealed class BotOptions
         return o;
     }
 
+    /// Options du i-ème bot simulé (--count) : port, pseudo et rayon propres.
+    public BotOptions ForInstance(int i)
+    {
+        var b = (BotOptions)MemberwiseClone();
+        b.Index = i;
+        if (Count == 1) return b;
+        b.Port = Port + i;
+        b.Name = $"{Name}-{i + 1}";
+        b.Radius = Radius + 2.5f * i;
+        return b;
+    }
+
     public NodeOptions ToNodeOptions() => new()
     {
         Port = Port, DiscoveryPort = TargetPort, Broadcast = Broadcast, ModVersion = "bot",
         ManualPeers = Endpoints.ParsePeers(string.Join(",", Peers), TargetPort, Console.Error.WriteLine),
     };
 
-    /// « latest » : le .lmdrec le plus récent du dossier d'enregistrements du jeu.
+    /// « latest » : le .lmdrec utilisable (≥ 2 s) le plus récent du dossier d'enregistrements du jeu.
+    /// Celui que le jeu est en train d'écrire est souvent encore vide (écriture par blocs) : on le saute.
     public static string ResolveReplay(string replay)
     {
         if (replay != "latest") return replay;
         string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local/share/Steam/steamapps/common/Lonely Mountains - Downhill/UserData/LmdMulti/recordings");
-        var latest = Directory.Exists(dir) ? new DirectoryInfo(dir).GetFiles("*.lmdrec").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault() : null;
-        return latest?.FullName ?? throw new FileNotFoundException($"aucun .lmdrec dans {dir}");
+        var files = Directory.Exists(dir) ? new DirectoryInfo(dir).GetFiles("*.lmdrec").OrderByDescending(f => f.LastWriteTimeUtc) : Enumerable.Empty<FileInfo>();
+        foreach (var f in files)
+        {
+            try
+            {
+                var (_, frames) = PoseRecorder.Read(f.FullName);
+                if (frames.Count >= 2 && frames[^1].TimeMs - frames[0].TimeMs >= 2000) return f.FullName;
+            }
+            catch (InvalidDataException) { } // autre version du protocole, fichier abîmé
+        }
+        throw new FileNotFoundException($"aucun .lmdrec utilisable dans {dir}");
     }
 }
