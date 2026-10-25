@@ -62,12 +62,14 @@ internal sealed class PoseCapture
             return true;
         }
         f.Flags |= PoseFlags.HasBones;
-        f.PosMask = posMask;
+        // Ragdoll : chaque os est placé par la physique (contraintes en monde), ses positions locales
+        // varient toutes. On les envoie toutes (≈ 420 octets/pose au lieu de 250, le temps du crash).
+        f.PosMask = crashed ? Skeleton.AllMask : posMask;
         for (int i = 0; i < Skeleton.Count; i++)
         {
             var t = rig.Bones[i];
             f.BoneRot[i] = t.localRotation.ToCore();
-            if ((posMask >> i & 1) != 0) f.BonePos[i] = t.localPosition.ToCore();
+            if ((f.PosMask >> i & 1) != 0) f.BonePos[i] = t.localPosition.ToCore();
         }
         return true;
     }

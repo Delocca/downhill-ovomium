@@ -84,7 +84,7 @@ public static class Messages
         var f = new PoseFrame { TimeMs = r.U32(), Flags = (PoseFlags)r.U8(), RootPos = r.Vec3(), RootRot = r.Quat() };
         if (!f.HasBones) return f;
         for (int i = 0; i < Skeleton.Count; i++) f.BoneRot[i] = r.Quat();
-        f.PosMask = r.U32() & ((1u << Skeleton.Count) - 1);
+        f.PosMask = r.U32() & Skeleton.AllMask;
         for (int i = 0; i < Skeleton.Count; i++)
             if ((f.PosMask >> i & 1) != 0) f.BonePos[i] = r.Vec3Half();
         return f;

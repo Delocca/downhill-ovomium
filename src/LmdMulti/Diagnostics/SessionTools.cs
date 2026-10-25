@@ -20,9 +20,31 @@ internal sealed class SessionTools
     private readonly Vec3[] _min = new Vec3[Skeleton.Count], _max = new Vec3[Skeleton.Count];
     private int _surveyed;
     private PoseFrame _lastSurveyed;
+    // Performance sur la fenêtre de stats : images, durée réelle, temps passé dans le mod, pire image.
+    private int _frames;
+    private double _frameSec, _modMs, _worstFrameMs;
+
+    /// À appeler une fois par image : modMs = temps passé dans le mod (Update + OnGUI) pour cette image.
+    public void Frame(double modMs)
+    {
+        if (!Config.DebugLog.Value) return;
+        float dt = Time.unscaledDeltaTime;
+        _frames++;
+        _frameSec += dt;
+        _modMs += modMs;
+        _worstFrameMs = Math.Max(_worstFrameMs, dt * 1000.0);
+    }
+
+    private string PerfLine()
+    {
+        if (_frames == 0) return "";
+        string line = $" | {_frames / _frameSec:F1} img/s (pire {_worstFrameMs:F0} ms), mod {_modMs / _frames:F3} ms/img";
+        _frames = 0; _frameSec = _modMs = _worstFrameMs = 0;
+        return line;
+    }
 
     /// En DebugLog, on envoie la position de tous les os : le relevé dit lesquels bougent vraiment.
-    public uint PositionMask => Config.DebugLog.Value ? (1u << Skeleton.Count) - 1 : Skeleton.DefaultPositionMask;
+    public uint PositionMask => Config.DebugLog.Value ? Skeleton.AllMask : Skeleton.DefaultPositionMask;
 
     public void Capture()
     {
@@ -56,7 +78,7 @@ internal sealed class SessionTools
         var peers = node.Peers();
         string list = string.Join(", ", peers.Select(p => $"{p.Name}[{(p.OnTrack ? p.Track : "menu")} {p.RttMs}ms {p.PosesReceived}p]"));
         Log.Info($"stats : piste={myTrack ?? "-"} pairs={peers.Count} ({list}) fantômes={visibleGhosts} " +
-                 $"envoyées={node.PosesSent} paquets in/out={node.PacketsIn}/{node.PacketsOut} figés={holds}");
+                 $"envoyées={node.PosesSent} paquets in/out={node.PacketsIn}/{node.PacketsOut} figés={holds}{PerfLine()}");
         if (visibleGhosts > 0) Log.Info($"fantômes :{describeGhosts()}");
         if (_surveyed > 0) Log.Info(SurveyLine());
     }
