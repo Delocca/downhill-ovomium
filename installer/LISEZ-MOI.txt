@@ -46,7 +46,7 @@ DÉMARRAGE RAPIDE ET CLAVIER
   toutes seules. En AZERTY : Z Q S D pour rouler et diriger (au lieu de W A S D),
   comme dans les menus. Les flèches marchent toujours. Si la détection se trompe :
   KeyboardLayout = "azerty" (ou "qwertz", "qwerty" = touches d'origine du jeu)
-  dans LmdMulti.cfg. Les touches F6 à F10, V et 1/2/3 sont les mêmes partout.
+  dans LmdMulti.cfg. Les touches F6 à F9, V et 1/2/3 sont les mêmes partout.
 
 
 VUE À LA PREMIÈRE PERSONNE (mod LMD-Camera)

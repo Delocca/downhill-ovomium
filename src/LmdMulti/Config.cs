@@ -15,7 +15,7 @@ internal static class Config
     public static MelonPreferences_Entry<int> Port;
     public static MelonPreferences_Entry<string> ManualPeers;
     public static MelonPreferences_Entry<string> Nickname;
-    public static MelonPreferences_Entry<string> PanelKey, EchoKey, CaptureKey, StyleKey, RaceKey;
+    public static MelonPreferences_Entry<string> PanelKey, EchoKey, StyleKey, RaceKey;
     public static MelonPreferences_Entry<bool> ShowPanel;
     public static MelonPreferences_Entry<bool> EchoMode;
     public static MelonPreferences_Entry<float> EchoDelaySeconds;
@@ -42,7 +42,6 @@ internal static class Config
         PanelKey = c.CreateEntry("PanelKey", "F8", description: "Touche : afficher/masquer le panneau des joueurs");
         EchoKey = c.CreateEntry("EchoKey", "F9", description: "Touche : activer/couper le mode écho");
         StyleKey = c.CreateEntry("StyleKey", "F7", description: "Touche : changer l'aspect des fantômes (GhostStyle)");
-        CaptureKey = c.CreateEntry("CaptureKey", "F10", description: "Touche : capture d'écran dans UserData/LmdMulti/captures");
         SkipIntro = c.CreateEntry("SkipIntro", true, description: "Démarrage rapide : passe les logos et l'écran « Appuyez sur… » pour arriver directement au menu");
         KeyboardLayout = c.CreateEntry("KeyboardLayout", "auto", description: "Clavier : auto (lettres du jeu, ex. ZQSD pour diriger, adaptées à ta disposition : AZERTY, QWERTZ…), azerty, qwertz, ou qwerty (touches du jeu inchangées)");
         CameraKey = c.CreateEntry("CameraKey", "V", description: "Touche : vue à la première personne ⇄ vue normale (mod LMD-Camera ; manette : clic du stick droit)");
@@ -55,6 +54,7 @@ internal static class Config
         RecordPoses = c.CreateEntry("RecordPoses", false, description: "Debug : enregistre ses poses dans UserData/LmdMulti/recordings (rejouables par LmdBot)");
         DebugLog = c.CreateEntry("DebugLog", false, description: "Debug : statistiques réseau et mouvements des os dans le journal");
         TestMode = c.CreateEntry("TestMode", false, description: "Tests seulement : le jeu n'enregistre aucun résultat (classements en ligne et locaux, succès, stats Steam, progression). À laisser à false pour jouer");
+        foreach (var retired in new[] { "CaptureKey", "RaceQuitKey" }) c.DeleteEntry(retired); // réglages retirés du mod
         c.SaveToFile(false); // écrit les valeurs par défaut manquantes (fichier documenté)
     }
 

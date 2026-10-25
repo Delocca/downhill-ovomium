@@ -17,7 +17,7 @@ namespace LmdMulti;
 /// Tout ce qui touche à Unity tourne ici, dans le fil principal ; le réseau a son propre fil.
 public class LmdMultiMod : MelonMod
 {
-    public const string Version = "0.3.0";
+    public const string Version = "0.3.1";
 
     private UdpNode _node;
     private RaceController _race;
@@ -171,7 +171,6 @@ public class LmdMultiMod : MelonMod
             _node.Echo = !_node.Echo;
             _toasts.Show(_node.Echo ? $"Écho activé : ton fantôme te suit à {Config.EchoDelaySeconds.Value:0.#} s" : "Écho coupé", new Color(1f, 0.85f, 0.4f), "echo");
         }
-        if (Input.GetKeyDown(Config.Key(Config.CaptureKey))) _tools.Capture();
         if (Input.GetKeyDown(Config.Key(Config.StyleKey))) CycleGhostStyle();
     }
 

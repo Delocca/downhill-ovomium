@@ -25,9 +25,8 @@ cleanup() {
     if [ -f "$SESSION/LmdMulti.cfg.avant" ]; then cp "$SESSION/LmdMulti.cfg.avant" "$CFG"; echo "config d'avant restaurée"
     elif [ -f "$CFG" ]; then trash-put "$CFG"; echo "config de session retirée"; fi
     cp "$GAME/MelonLoader/Latest.log" "$SESSION/MelonLoader-Latest.log" 2>/dev/null
-    [ -d "$DATA/captures" ] && cp -r "$DATA/captures" "$SESSION/" 2>/dev/null
     ls "$DATA/recordings" 2>/dev/null > "$SESSION/enregistrements.txt"
-    echo "Tout est dans $SESSION (journal, log du mod, captures, logs des bots)."
+    echo "Tout est dans $SESSION (journal, log du mod, captures du bureau, logs des bots)."
 }
 
 prepare() {
@@ -70,7 +69,7 @@ guide() {
     cat <<'EOF'
 
   ┌─────────────────────────── Mode d'emploi ───────────────────────────┐
-  │ F10 dans le jeu = capture d'écran (à faire à chaque étape ✔).       │
+  │ F10 dans le jeu = capture d'écran du jeu (à chaque étape ✔).        │
   │ F8 = panneau des joueurs · F9 = écho on/off · F7 = aspect fantômes. │
   └─────────────────────────────────────────────────────────────────────┘
   1. MENU : en haut à droite, le panneau « LmdMulti 0.1.0 · écoute sur le

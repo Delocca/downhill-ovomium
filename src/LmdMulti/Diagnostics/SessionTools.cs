@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using System.Text;
 using LmdMulti.Core;
@@ -10,12 +9,11 @@ using UnityEngine;
 
 namespace LmdMulti.Diagnostics;
 
-/// Outils de test : capture d'écran par touche, statistiques périodiques et relevé des os
+/// Outils de test : statistiques périodiques et relevé des os
 /// qui translatent (DebugLog), pour valider une session sans débogueur.
 internal sealed class SessionTools
 {
     private double _nextStats;
-    private int _captureIndex;
     // Relevé des positions locales min/max par os, sur les poses hors crash.
     private readonly Vec3[] _min = new Vec3[Skeleton.Count], _max = new Vec3[Skeleton.Count];
     private int _surveyed;
@@ -45,15 +43,6 @@ internal sealed class SessionTools
 
     /// En DebugLog, on envoie la position de tous les os : le relevé dit lesquels bougent vraiment.
     public uint PositionMask => Config.DebugLog.Value ? Skeleton.AllMask : Skeleton.DefaultPositionMask;
-
-    public void Capture()
-    {
-        string dir = Path.Combine(Config.DataDir, "captures");
-        Directory.CreateDirectory(dir);
-        string path = Path.Combine(dir, $"capture-{DateTime.Now:HHmmss}-{++_captureIndex:D2}.png");
-        ScreenCapture.CaptureScreenshot(path);
-        Log.Info($"CAPTURE {_captureIndex} : {path}");
-    }
 
     public void Survey(PoseFrame f)
     {

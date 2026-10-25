@@ -38,6 +38,5 @@
     <Reference Include="$(RefsDir)UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.IMGUIModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.TextRenderingModule.dll" Private="false" />
-    <Reference Include="$(RefsDir)UnityEngine.ScreenCaptureModule.dll" Private="false" />
   </ItemGroup>
 </Project>
