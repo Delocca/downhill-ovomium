@@ -142,6 +142,7 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 
 ## Limites des tests et besoins
 
+- **Solution retenue (2026-10-25) : rendu complet sur écran virtuel Xorg « dummy »**. Commandes : `tools/lmd-virtual.sh start|stop|shot` (`:98`, DXVK sur la NVIDIA, config `tools/xdummy.conf`, paquet `xserver-xorg-video-dummy`). Le dummy annonce 60 Hz, ce qui évite le plantage de DXVK. Écran titre rendu, conduite à valider. Pour voir en direct : `tools/watch-virtual.sh`. Ce qui suit est l'historique avant cette solution.
 - **Rendu sous Xvfb impossible** : le jeu reste bloqué à la 1re frame (« Loading Addons... », écran noir).
   - Observé avec et sans MelonLoader, dans et hors du bac à sable, et avec `runInBackground` forcé.
   - Selon winedbg, le fil principal tourne en boucle dans la player loop.
@@ -150,7 +151,7 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
   - Puis le jeu meurt sans message (Player.log coupé) : `WINEDEBUG=+seh` montre un `EXCEPTION_ACCESS_VIOLATION` (lecture en 0xFFFFFFFFFFFFFFFF) pendant le déroulement d'exceptions C++ ; cause non trouvée.
   - Xvfb annonce 0 Hz et refuse d'ajouter un mode (`xrandr --newmode` accepté, `--addmode` : « cannot find mode »).
   - Pièges : un `wineserver` resté d'un lancement précédent (Xvfb arrêté entre-temps) fait échouer le suivant (« no driver could be loaded ») : `WINEPREFIX=<pfx> "<Proton>/files/bin/wineserver" -k` avant de relancer.
-- **Contournement retenu** : `LMD_ARGS="-batchmode -nographics" tools/lmd-xvfb.sh start`.
+- **Ancien contournement** : `LMD_SCREEN=xvfb LMD_ARGS="-batchmode -nographics" tools/lmd-virtual.sh start`.
   - Menus, profil, chargement de pistes, vélo et ragdoll fonctionnent : tout ce qui est marqué [vérifié] l'a été ainsi.
   - En revanche, le sol n'a pas de collision dans ce mode : au déblocage, le vélo tombe et crashe (`FallTime`).
 - **Non testable sans rendu ni conduite**, donc à faire dans une session scriptée sur le bureau d'Edia :
