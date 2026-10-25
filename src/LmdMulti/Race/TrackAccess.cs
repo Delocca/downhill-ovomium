@@ -1,17 +1,15 @@
 using System.Collections.Generic;
-using HarmonyLib;
 using Il2Cpp;
 using Il2CppMegagon.Downhill;
 using Il2CppMegagon.Downhill.Managers;
-using Il2CppMegagon.Downhill.Progression;
 
 namespace LmdMulti.Race;
 
 /// Sélection d'une piste par son ID (ex. AL_01_A1), y compris verrouillée chez ce joueur (docs/game-api.md § 4).
 /// Verrou du jeu : masque d'heures du jour débloquées porté par l'info de piste, en mémoire seulement
 /// (recalculé depuis la progression sauvegardée au chargement du profil). On le force le temps de la
-/// course, puis on le remet dès qu'on a quitté la piste. Les arrivées sur une piste forcée ne sont pas
-/// transmises à la progression (sinon des objectifs validés débloqueraient d'autres pistes pour de bon).
+/// course, puis on le remet dès qu'on a quitté la piste. Tant qu'elle est forcée, ni temps ni progression
+/// n'y sont enregistrés (Diagnostics/TestMode.cs, AllowResult).
 internal static class TrackAccess
 {
     private sealed class Forced { public ObjectPublicInm_StObm_InStUnique Info; public EnumPublicSealedva5v2 Flags; public SubMountain Sub; public bool WasPlayable; }
@@ -20,6 +18,17 @@ internal static class TrackAccess
 
     public static bool IsForced(string trackId) => trackId != null && ForcedTracks.ContainsKey(trackId);
     public static bool HasForced => ForcedTracks.Count > 0;
+
+    /// Résultat concernant une piste forcée : la piste en cours, ou l'ID passé (piste « CA_01_A2 » ou
+    /// classement « CA_01_A2_00_N_D »).
+    public static bool IsForcedFor(string currentTrack, string id)
+    {
+        if (IsForced(currentTrack)) return true;
+        if (string.IsNullOrEmpty(id)) return false;
+        foreach (var track in ForcedTracks.Keys)
+            if (id.StartsWith(track)) return true;
+        return false;
+    }
 
     /// Choisit montagne puis piste dans le MountainManager (comme les menus). Faux + erreur si impossible.
     public static bool Select(string trackId, out string error)
@@ -84,18 +93,5 @@ internal static class TrackAccess
             });
             Log.Info($"course : verrou de {id} remis comme avant");
         }
-    }
-}
-
-/// Arrivée enregistrée par la progression du jeu (objectifs, déblocages) : ignorée sur une piste forcée.
-[HarmonyPatch(typeof(ProgressionDB), nameof(ProgressionDB.Method_Public_Void_String_GameMode_Int32_EnumPublicSealedva5v2_Single_Int32_PDM_0))]
-internal static class ForcedTrackProgressionPatch
-{
-    private static bool Prefix(string param_1)
-    {
-        if (!Diagnostics.TestMode.Allow($"progression ({param_1})")) return false;
-        if (!TrackAccess.IsForced(param_1)) return true;
-        Log.Info($"course : arrivée sur {param_1} (piste forcée) non comptée dans la progression");
-        return false;
     }
 }

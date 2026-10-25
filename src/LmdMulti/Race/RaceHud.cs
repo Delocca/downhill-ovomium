@@ -80,6 +80,8 @@ internal static class RaceHud
         };
         if (v.Phase == RacePhase.Racing) lines.Add((Ranking.FormatTime(MyClock(s, now)), EndText(v, now), _chrono));
         else lines.Add((WaitText(s, now), "", _row));
+        if (TrackAccess.IsForced(v.Track)) // rappel discret : verrou contourné, rien n'est enregistré (TestMode.AllowResult)
+            lines.Add(($"<size={(int)(14 * S)}><color=#e0b060>piste non débloquée : temps non enregistré</color></size>", "", _row));
         int pos = 0;
         foreach (var e in v.Entries.Where(e => e.IsListed || v.Phase == RacePhase.Gathering && e.State == RacerState.Invited))
             lines.Add(EntryLine(s, e, ++pos));
