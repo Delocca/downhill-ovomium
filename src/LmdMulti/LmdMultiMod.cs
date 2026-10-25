@@ -125,7 +125,11 @@ public class LmdMultiMod : MelonMod
             switch (e.Kind)
             {
                 case NetEventKind.Pose: _ghosts.OnPose(e.PeerId, e.Pose, e.RecvMs); break;
-                case NetEventKind.PeerJoined: _ghosts.OnPeer(e.Peer); AnnounceArrival(e.Peer); break;
+                case NetEventKind.PeerJoined:
+                    _ghosts.OnPeer(e.Peer);
+                    _race.OnPeerJoined(e.PeerId, NetClock.NowMs);
+                    AnnounceArrival(e.Peer);
+                    break;
                 case NetEventKind.PeerChanged: _ghosts.OnPeer(e.Peer); Log.Info($"{e.Peer.Name} : {(e.Peer.OnTrack ? e.Peer.Track : "menu")}"); break;
                 case NetEventKind.PeerLeft:
                     _ghosts.OnLeft(e.PeerId);

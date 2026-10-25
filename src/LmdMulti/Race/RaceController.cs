@@ -17,12 +17,12 @@ internal sealed class RaceController
 
     private readonly UdpNode _node;
     private readonly Toasts _toasts;
+    private readonly RaceLobby _lobby;
     private readonly RaceRun _run = new();
-    private readonly System.Random _rng = new();
     private RacePhase _lastPhase;
     private double _resultsUntil;
 
-    public IRaceSession Session { get; private set; }
+    public IRaceSession Session => _lobby.Session;
     public RaceRun Run => _run;
     public bool ResultsVisible(double now) => Session?.View.Phase == RacePhase.Finished && now < _resultsUntil;
 
@@ -30,21 +30,25 @@ internal sealed class RaceController
     {
         _node = node;
         _toasts = toasts;
+        _lobby = new RaceLobby(node.Id, node.SendMessage, HostOffset);
     }
 
-    private bool Busy => Session != null && !Session.View.IsOver && !(Session is RaceGuest g && g.IsPending);
+    private bool Busy => _lobby.Busy;
 
     public void OnMessage(ulong from, byte[] data, double now, string myName)
     {
-        RaceMessage m;
-        try { m = RaceMessages.Read(data); }
-        catch (FormatException) { return; }
-        if (m.Kind != RaceMsgKind.Invite) { Session?.OnMessage(from, m, now); return; }
-        if (Busy) { _node.SendMessage(from, RaceMessages.Reply(m.RaceId, false)); Log.Info($"course : invitation de {m.HostName} refusée (déjà en course)"); return; }
-        if (Session is RaceGuest old && old.IsPending) old.Decline(); // une invitation plus récente remplace
-        Session = new RaceGuest(m, from, _node.Id, myName, now, _node.SendMessage, () => HostOffset(from));
+        var r = _lobby.OnMessage(from, data, now, myName);
+        if (r == null) return;
+        var m = r.Invite;
+        if (r.Choice == InviteChoice.Decline) { Log.Info($"course : invitation de {m.HostName} refusée (déjà en course)"); return; }
         _lastPhase = Session.View.Phase;
-        Log.Info($"course : invitation de {m.HostName} sur {m.Track}");
+        Log.Info($"course : invitation de {m.HostName} sur {m.Track} ({r.Choice}{(r.AutoAccepted ? ", acceptée d'office" : "")})");
+        if (r.Choice != InviteChoice.Yield) return;
+        // Lancements simultanés : la course de l'autre est retenue (RaceInvites), la nôtre disparaît.
+        _run.End();
+        if (r.AutoAccepted) _run.Begin(m.Track, now);
+        _toasts.Show(r.AutoAccepted ? $"{m.HostName} a lancé la même course en même temps : tu la rejoins"
+                                    : $"{m.HostName} a lancé une course en même temps : la sienne est retenue", Info, "race");
     }
 
     private double? HostOffset(ulong host)
@@ -53,13 +57,22 @@ internal sealed class RaceController
         return p != null && p.HasClock ? p.ClockOffsetMs : null;
     }
 
-    public void OnPeerLeft(ulong id, double now) => Session?.OnPeerLeft(id, now);
+    public void OnPeerLeft(ulong id, double now)
+    {
+        bool wasGone = Session is RaceGuest { HostGone: true };
+        _lobby.OnPeerLeft(id, now);
+        if (!wasGone && Session is RaceGuest { HostGone: true } g && !g.View.IsOver)
+            _toasts.Show("L'hôte a quitté : finis ta descente, classement figé", Bad, "race");
+    }
+
+    /// Pair (re)venu : s'il avait disparu en pleine course que nous accueillons, il retrouve sa place.
+    public void OnPeerJoined(ulong id, double now) => _lobby.OnPeerBack(id, now);
 
     public void Update(double now)
     {
         if (TrackAccess.HasForced && !_run.Loading) TrackAccess.RestoreExcept(GameInfo.CurrentTrackId());
         if (Session == null) return;
-        Session.Tick(now);
+        _lobby.Tick(now);
         string error = _run.Update(Session, now);
         if (error != null) Fail(error, now);
         if (Session.View.Phase != _lastPhase) OnPhaseChanged(now);
@@ -91,6 +104,8 @@ internal sealed class RaceController
         CancelReason.Excluded => "Chargement trop long : la course est partie sans toi",
         CancelReason.TooLate => "Trop tard : la course est déjà partie",
         CancelReason.HostFailed => "L'hôte n'a pas pu charger la piste : course annulée",
+        CancelReason.Superseded => "Course annulée : l'hôte a rejoint une course lancée en même temps",
+        CancelReason.HostLost => "L'hôte ne répond plus : course annulée",
         _ => null,
     };
 
@@ -141,8 +156,7 @@ internal sealed class RaceController
         if (track == null) { _toasts.Show("Choisis d'abord une piste", Info, "race"); return; }
         var peers = _node.Peers().Where(p => p.IsCompatible && !p.IsEcho).Select(p => (p.Id, p.Name)).ToList();
         if (peers.Count == 0) { _toasts.Show("Aucun autre joueur détecté : pas de course possible", Info, "race"); return; }
-        var host = new RaceHost((uint)_rng.Next(1, int.MaxValue), track, _node.Id, myName, peers, now, _node.SendMessage);
-        Session = host;
+        var host = _lobby.Host(track, peers, myName, now);
         _lastPhase = host.View.Phase;
         _run.Begin(track, now);
         _toasts.Show($"Course sur {GameInfo.TrackName(track)} : {host.InvitedCount} joueur(s) invité(s)", Info, "race");

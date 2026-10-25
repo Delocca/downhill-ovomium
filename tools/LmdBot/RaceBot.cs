@@ -6,7 +6,7 @@ using LmdMulti.Core.Race;
 
 namespace LmdBot;
 
-/// Pair de course simulé, avec la même logique que le mod (RaceHost / RaceGuest du cœur) :
+/// Pair de course simulé, avec la même logique que le mod (RaceLobby, RaceHost / RaceGuest du cœur) :
 ///  - join : accepte les invitations, « charge » quelques secondes, se déclare prêt, puis franchit des
 ///    sections et arrive au bout de --race-time secondes (ou abandonne avec --race-dnf) ;
 ///  - host : lance une course sur --race-track dès qu'un vrai joueur est vu, et la joue de même.
@@ -15,40 +15,35 @@ internal sealed class RaceBot
     private const int Sections = 7;
     private readonly BotOptions _o;
     private readonly UdpNode _node;
-    private readonly Random _rng;
-    private IRaceSession _session;
+    private readonly RaceLobby _lobby;
     private double _acceptAt = double.NaN, _readyAt = double.NaN, _nextHostAt = double.NaN;
-    private bool _hosted;
+    private bool _hosted, _loaded;
     private RacePhase _lastPhase;
 
     public RaceBot(BotOptions o, UdpNode node)
     {
         _o = o;
         _node = node;
-        _rng = new Random(o.Index * 7919 + 1);
+        _lobby = new RaceLobby(node.Id, node.SendMessage, HostOffset, o.Index * 7919 + 1);
     }
 
+    private IRaceSession Session => _lobby.Session;
+
     /// Piste à annoncer : celle de la course une fois « chargée », null sinon.
-    public string Track => _loaded && !_session.View.IsOver ? _session.View.Track : null;
-    private bool _loaded;
+    public string Track => _loaded && !Session.View.IsOver ? Session.View.Track : null;
 
     public void OnEvent(NetEvent e, double now)
     {
-        if (e.Kind == NetEventKind.PeerLeft) _session?.OnPeerLeft(e.PeerId, now);
+        if (e.Kind == NetEventKind.PeerLeft) _lobby.OnPeerLeft(e.PeerId, now);
+        if (e.Kind == NetEventKind.PeerJoined) _lobby.OnPeerBack(e.PeerId, now);
         if (e.Kind != NetEventKind.Message) return;
-        var m = RaceMessages.Read(e.Data);
-        if (m.Kind == RaceMsgKind.Invite) { OnInvite(e.PeerId, m, now); return; }
-        _session?.OnMessage(e.PeerId, m, now);
-    }
-
-    private void OnInvite(ulong host, RaceMessage m, double now)
-    {
-        if (_session != null && !_session.View.IsOver) { _node.SendMessage(host, RaceMessages.Reply(m.RaceId, false)); return; }
-        var g = new RaceGuest(m, host, _node.Id, _o.Name, now, _node.SendMessage, () => HostOffset(host));
-        _session = g;
+        var r = _lobby.OnMessage(e.PeerId, e.Data, now, _o.Name);
+        if (r == null || r.Choice == InviteChoice.Decline) return;
         _loaded = false;
-        Program.Say($"{_o.Name} : invité par {m.HostName} sur {m.Track}{(_o.RaceDecline ? " (refus)" : "")}");
-        if (_o.RaceDecline) g.Decline();
+        _readyAt = double.NaN;
+        Program.Say($"{_o.Name} : invité par {r.Invite.HostName} sur {r.Invite.Track} ({r.Choice}){(_o.RaceDecline ? " (refus)" : "")}");
+        if (r.AutoAccepted) _readyAt = now + _o.RaceLoadS * 1000;
+        else if (_o.RaceDecline) _lobby.PendingInvite?.Decline();
         else _acceptAt = now + 1000 + 500 * _o.Index;
     }
 
@@ -61,26 +56,30 @@ internal sealed class RaceBot
     public void Tick(double now, List<PeerInfo> peers)
     {
         if (_o.RaceMode == "host") TryHost(now, peers);
-        if (_session == null) return;
-        if (now >= _acceptAt && _session is RaceGuest g) { _acceptAt = double.NaN; g.Accept(); _readyAt = now + _o.RaceLoadS * 1000; }
-        if (now >= _readyAt) { _readyAt = double.NaN; _loaded = true; _session.Ready(now); Program.Say($"{_o.Name} : prêt"); }
-        _session.Tick(now);
-        if (_lastPhase != _session.View.Phase) // changé ici ou par un message de l'hôte
+        if (Session == null) return;
+        if (now >= _acceptAt)
         {
-            _lastPhase = _session.View.Phase;
-            Program.Say($"{_o.Name} : course {Describe(_session.View)}");
+            _acceptAt = double.NaN;
+            if (_lobby.PendingInvite is RaceGuest g) { g.Accept(); _readyAt = now + _o.RaceLoadS * 1000; }
         }
-        if (_session.View.Phase == RacePhase.Racing) Ride(now);
+        if (now >= _readyAt) { _readyAt = double.NaN; _loaded = true; Session.Ready(now); Program.Say($"{_o.Name} : prêt"); }
+        _lobby.Tick(now);
+        if (_lastPhase != Session.View.Phase) // changé ici ou par un message de l'hôte
+        {
+            _lastPhase = Session.View.Phase;
+            Program.Say($"{_o.Name} : course {Describe(Session.View)}");
+        }
+        if (Session.View.Phase == RacePhase.Racing) Ride(now);
     }
 
     /// Course simulée : sections régulières, arrivée (ou abandon à mi-course) au bout du temps prévu.
     private void Ride(double now)
     {
-        if (_session.Me?.State != RacerState.Racing) return;
-        double elapsed = now - _session.View.StartAtMs, total = (_o.RaceTimeS + 4 * _o.Index) * 1000;
-        if (_o.RaceDnf && elapsed > total / 2) { _session.Abandon(now); Program.Say($"{_o.Name} : abandon"); return; }
-        if (elapsed >= total) { _session.Finish((uint)elapsed, now); Program.Say($"{_o.Name} : arrivée en {Ranking.FormatTime(elapsed)}"); return; }
-        _session.Progress((int)(elapsed / total * Sections), now);
+        if (Session.Me?.State != RacerState.Racing) return;
+        double elapsed = now - Session.View.StartAtMs, total = (_o.RaceTimeS + 4 * _o.Index) * 1000;
+        if (_o.RaceDnf && elapsed > total / 2) { Session.Abandon(now); Program.Say($"{_o.Name} : abandon"); return; }
+        if (elapsed >= total) { Session.Finish((uint)elapsed, now); Program.Say($"{_o.Name} : arrivée en {Ranking.FormatTime(elapsed)}"); return; }
+        Session.Progress((int)(elapsed / total * Sections), now);
     }
 
     /// Hôte : invite tous les pairs compatibles (sauf les autres bots hôtes) quand un vrai joueur est là.
@@ -94,9 +93,10 @@ internal sealed class RaceBot
         _hosted = true;
         string track = _o.RaceTrack ?? real.FirstOrDefault(p => p.OnTrack)?.Track ?? "CA_01_A2";
         var invitees = peers.Where(p => p.IsCompatible && !p.IsEcho).Select(p => (p.Id, p.Name));
-        _session = new RaceHost((uint)_rng.Next(), track, _node.Id, _o.Name, invitees, now, _node.SendMessage);
+        var host = _lobby.Host(track, invitees, _o.Name, now);
+        _loaded = false;
         _readyAt = now + _o.RaceLoadS * 1000;
-        Program.Say($"{_o.Name} : course lancée sur {track}, {((RaceHost)_session).InvitedCount} invité(s)");
+        Program.Say($"{_o.Name} : course lancée sur {track}, {host.InvitedCount} invité(s)");
     }
 
     public static string Describe(Standings s)

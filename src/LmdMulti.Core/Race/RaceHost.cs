@@ -49,12 +49,25 @@ public sealed class RaceHost : IRaceSession
 
     public int InvitedCount => View.Entries.Count - 1;
 
+    /// Un invité a déjà accepté : la course n'est plus « toute neuve » (voir RaceInvites).
+    public bool HasAcceptedGuests => View.Entries.Any(e => e.Id != MyId && e.State is not (RacerState.Invited or RacerState.Declined));
+
     public void OnMessage(ulong from, RaceMessage m, double now)
     {
         var e = View.Find(from);
         if (m.RaceId != View.RaceId || e == null || e.Id == MyId) return;
         if (m.Kind == RaceMsgKind.Reply) OnReply(e, m.Accept, now);
-        else if (m.Kind == RaceMsgKind.Status) Apply(e, m.State, m.Progress, m.TimeMs, now);
+        else if (m.Kind == RaceMsgKind.Status && e.IsActive) Apply(e, m.State, m.Progress, m.TimeMs, now);
+        else if (m.Kind == RaceMsgKind.Status) AnswerStale(e, m.State, now);
+    }
+
+    /// Nouvelles d'un coureur que l'on a déjà sorti (exclu, abandon d'office) alors qu'il se croit encore
+    /// en course (message perdu, réseau coupé un moment) : on le lui redit, sinon il attendrait pour rien.
+    private void AnswerStale(RaceEntry e, RacerState claimed, double now)
+    {
+        if (claimed is RacerState.Dnf or RacerState.Finished && e.State == claimed) return; // doublon
+        if (e.State == RacerState.Excluded) _send(e.Id, RaceMessages.Cancel(View.RaceId, CancelReason.Excluded));
+        else if (e.IsListed) _send(e.Id, RaceMessages.Standings(View, now));
     }
 
     private void OnReply(RaceEntry e, bool accept, double now)
@@ -90,12 +103,32 @@ public sealed class RaceHost : IRaceSession
     public void Finish(uint timeMs, double now) => Apply(Me, RacerState.Finished, 0, timeMs, now);
     public void Abandon(double now) => Apply(Me, RacerState.Dnf, 0, 0, now);
 
+    /// Pair disparu (départ, ou muet 5 s) : exclu avant le départ, abandon après. S'il revient à temps
+    /// (OnPeerBack), il retrouve sa place ; d'ici là, on ne lui envoie plus rien.
     public void OnPeerLeft(ulong id, double now)
     {
         var e = View.Find(id);
         if (e == null || id == MyId) return;
         if (e.State == RacerState.Invited) Set(e, RacerState.Declined);
-        else if (e.IsActive) Set(e, View.Phase == RacePhase.Gathering ? RacerState.Excluded : RacerState.Dnf);
+        else if (e.IsActive)
+        {
+            e.DroppedFrom = e.State;
+            Set(e, View.Phase == RacePhase.Gathering ? RacerState.Excluded : RacerState.Dnf);
+        }
+    }
+
+    /// Pair revenu (même instance du jeu, après une coupure réseau) : rendu à son état d'avant si la
+    /// course le permet encore ; sinon on lui dit qu'il en est sorti.
+    public void OnPeerBack(ulong id, double now)
+    {
+        var e = View.Find(id);
+        if (e?.DroppedFrom is not RacerState was || id == MyId) return;
+        e.DroppedFrom = null;
+        if (View.IsOver) { if (e.IsListed) _send(e.Id, RaceMessages.Standings(View, now)); return; }
+        bool gathering = View.Phase == RacePhase.Gathering;
+        if (gathering && e.State == RacerState.Excluded) Set(e, was);
+        else if (!gathering && e.State == RacerState.Dnf) Set(e, was == RacerState.Ready && View.Phase == RacePhase.Racing ? RacerState.Racing : was);
+        else _send(e.Id, RaceMessages.Cancel(View.RaceId, CancelReason.Excluded)); // exclu avant un départ qui a eu lieu
     }
 
     /// Annulation par l'hôte (avant le départ, ou chargement impossible).
@@ -168,7 +201,8 @@ public sealed class RaceHost : IRaceSession
         _dirty = true;
     }
 
-    /// Classement trié, envoyé à chaque coureur engagé (pas aux invitations en attente, refus, exclus).
+    /// Classement trié, envoyé à chaque coureur engagé (pas aux invitations en attente, refus, exclus,
+    /// ni aux disparus : à leur retour, ils reçoivent le classement d'alors, pas un abandon périmé).
     private void Publish(double now)
     {
         _dirty = false;
@@ -176,6 +210,6 @@ public sealed class RaceHost : IRaceSession
         Ranking.Sort(View.Entries);
         byte[] msg = RaceMessages.Standings(View, now);
         foreach (var e in View.Entries)
-            if (e.Id != MyId && e.IsListed) _send(e.Id, msg);
+            if (e.Id != MyId && e.IsListed && e.DroppedFrom == null) _send(e.Id, msg);
     }
 }

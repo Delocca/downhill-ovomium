@@ -19,6 +19,9 @@ public static class RaceRules
     /// Course interrompue au-delà (personne n'arrive).
     public const double MaxRaceMs = 30 * 60000;
     public const int MaxRacers = 16;
+    /// Filet d'un invité : sans départ de l'hôte ce délai après la fin du délai de réponse, il abandonne
+    /// (au-delà des 30 s de chargement accordées par l'hôte, et des 60 s + 25 s qu'il s'accorde à lui-même).
+    public const double GuestGiveUpMs = 90000;
 }
 
 public enum RacePhase : byte { Gathering = 1, Countdown = 2, Racing = 3, Finished = 4, Cancelled = 5 }
@@ -36,6 +39,8 @@ public enum CancelReason : byte
     TooLate = 5,         // réponse arrivée après le départ ou le délai
     HostFailed = 6,      // l'hôte n'a pas pu charger la piste
     LoadFailed = 7,      // (local) chargement de la piste impossible chez toi
+    Superseded = 8,      // l'hôte a rejoint une course lancée au même moment (RaceInvites)
+    HostLost = 9,        // (local) plus de nouvelles de l'hôte avant le départ (GuestGiveUpMs)
 }
 
 public sealed class RaceEntry
@@ -49,6 +54,8 @@ public sealed class RaceEntry
     public byte Progress;
     // Hôte seulement (non transmis) :
     internal double ProgressAtMs, DeadlineMs;
+    /// Disparu du réseau (exclu ou abandon d'office) : état d'avant, rendu s'il revient à temps.
+    internal RacerState? DroppedFrom;
 
     public bool IsActive => State is RacerState.Loading or RacerState.Ready or RacerState.Racing;
     /// Montré dans les classements (les refus, exclus et invitations sans réponse ne le sont pas).
