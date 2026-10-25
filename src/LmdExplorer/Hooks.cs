@@ -76,12 +76,6 @@ internal static class HookLockMovement
     private static void Prefix(bool param_1) => Out.Info($"[hook] PlayerManager.LockMovement?({param_1})");
 }
 
-[HarmonyPatch(typeof(BikeLocomotion), nameof(BikeLocomotion.Method_Private_Void_CrashReason_Boolean_0))]
-internal static class HookCrash
-{
-    private static void Prefix(CrashReason param_1, bool param_2) => Out.Info($"[hook] BikeLocomotion.Crash?({param_1}, {param_2})");
-}
-
 [HarmonyPatch(typeof(PauseScreen), nameof(PauseScreen.OnRestartRun))]
 internal static class HookRestartRun
 {

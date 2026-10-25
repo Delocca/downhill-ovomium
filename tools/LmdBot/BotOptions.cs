@@ -24,6 +24,7 @@ internal sealed class BotOptions
                     croissants, ou rejeux décalés de 1,5 s chacun le long de la piste
   --duration S      s'arrête après S secondes (défaut : Ctrl+C)
   --loss P          jette volontairement cette part des paquets émis (0 à 1) : éprouve les renvois
+  --no-poses        n'envoie aucune pose : pas de fantôme chez les autres (course seule)
 Course :
   --race join       accepte les invitations, charge --race-load s, roule --race-time s (+4 s par bot)
   --race host       lance une course --race-delay s après avoir vu un vrai joueur (une seule fois)
@@ -43,7 +44,7 @@ Course :
     public double DurationS = double.PositiveInfinity, Loss;
     public string RaceMode, RaceTrack;
     public double RaceTimeS = 25, RaceLoadS = 3, RaceDelayS = 3;
-    public bool RaceDecline, RaceDnf;
+    public bool RaceDecline, RaceDnf, NoPoses;
 
     public static BotOptions Parse(string[] args)
     {
@@ -65,6 +66,7 @@ Course :
                 case "--count": o.Count = Math.Clamp(int.Parse(Next()), 1, 64); break;
                 case "--duration": o.DurationS = Num(Next()); break;
                 case "--loss": o.Loss = Math.Clamp(Num(Next()), 0, 0.9); break;
+                case "--no-poses": o.NoPoses = true; break;
                 case "--race": o.RaceMode = Next() is "join" or "host" ? args[i] : throw new ArgumentException("--race join|host"); break;
                 case "--race-track": o.RaceTrack = Next(); break;
                 case "--race-time": o.RaceTimeS = Num(Next()); break;

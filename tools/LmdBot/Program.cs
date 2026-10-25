@@ -77,7 +77,7 @@ internal static class Program
             var anchorPeer = names.Values.FirstOrDefault(p => p.IsCompatible && p.OnTrack && p.ModVersion != "bot" && stats.ContainsKey(p.Id));
             string track = race?.Track ?? fixedTrack ?? anchorPeer?.Track ?? names.Values.FirstOrDefault(p => p.OnTrack)?.Track;
             node.SetLocal(o.Name, 76561190000000000UL + (node.Id & 0xFFFF), track ?? "", track != null);
-            if (track != null)
+            if (track != null && !o.NoPoses)
             {
                 double now = NetClock.NowMs;
                 var f = source.Next(now, anchorPeer != null ? stats[anchorPeer.Id].Last : null);

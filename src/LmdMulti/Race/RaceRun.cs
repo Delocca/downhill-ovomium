@@ -54,7 +54,12 @@ internal sealed class RaceRun
         {
             case RacerState.Loading:
                 if (_loader.Current == TrackLoader.Step.Failed) return $"Impossible de charger la piste : {_loader.Error}";
-                if (_loader.Current == TrackLoader.Step.Done && IsSettled(now)) { s.Ready(now); Log.Info("course : prêt au départ"); }
+                if (_loader.Current == TrackLoader.Step.Done && IsSettled(now))
+                {
+                    s.Ready(now);
+                    Log.Info("course : prêt au départ");
+                    Log.Try("course : sélection", TrackAccess.RestoreSelection); // piste chargée : le menu peut retrouver la sienne
+                }
                 break;
             case RacerState.Ready:
                 if (GameInfo.CurrentTrackId() != _track) { s.Abandon(now); return "Tu as quitté la piste : abandon"; }
@@ -71,7 +76,7 @@ internal sealed class RaceRun
     {
         if (now < _nextSettleCheck) return false;
         _nextSettleCheck = now + 250;
-        if (GameInfo.CurrentTrackId() != _track || RaceGame.LoadingVisible()) { _visibleSince = double.NaN; }
+        if (GameInfo.CurrentTrackId() != _track || GameInfo.LoadingVisible()) { _visibleSince = double.NaN; }
         else if (double.IsNaN(_visibleSince)) _visibleSince = now;
         return now - _visibleSince > SettleMs || now - _loader.ArrivedAtMs > ReadyFallbackMs;
     }

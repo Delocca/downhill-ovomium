@@ -20,7 +20,7 @@ internal sealed class RaceController
     private readonly RaceLobby _lobby;
     private readonly RaceRun _run = new();
     private RacePhase _lastPhase;
-    private double _resultsUntil;
+    private double _resultsUntil, _nextRestoreCheck;
 
     public IRaceSession Session => _lobby.Session;
     public RaceRun Run => _run;
@@ -70,7 +70,7 @@ internal sealed class RaceController
 
     public void Update(double now)
     {
-        if (TrackAccess.HasForced && !_run.Loading) TrackAccess.RestoreExcept(GameInfo.CurrentTrackId());
+        RestoreLocksWhenSettled(now);
         if (Session == null) return;
         _lobby.Tick(now);
         string error = _run.Update(Session, now);
@@ -78,6 +78,21 @@ internal sealed class RaceController
         if (Session.View.Phase != _lastPhase) OnPhaseChanged(now);
         if (Session.View.IsOver) _run.End();
     }
+
+    /// Verrous de pistes forcées remis seulement au menu installé depuis 2 s : remis pendant la sortie de
+    /// piste, ils empêchent le jeu de ranger le vélo, et le chargement suivant se fige (docs/game-api.md § 4).
+    private void RestoreLocksWhenSettled(double now)
+    {
+        if (!TrackAccess.HasForced || _run.Loading || now < _nextRestoreCheck) return;
+        _nextRestoreCheck = now + 250;
+        if (!GameInfo.MenuSettled()) { _menuSince = double.NaN; return; }
+        if (double.IsNaN(_menuSince)) _menuSince = now;
+        if (now - _menuSince < 2000) return;
+        TrackAccess.RestoreSelection(); // course quittée avant d'être prête : au moins le profil retrouve sa piste
+        TrackAccess.RestoreAll();
+    }
+
+    private double _menuSince = double.NaN;
 
     private void Fail(string error, double now)
     {

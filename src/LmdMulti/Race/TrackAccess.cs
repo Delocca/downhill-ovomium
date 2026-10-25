@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Il2Cpp;
 using Il2CppMegagon.Downhill;
 using Il2CppMegagon.Downhill.Managers;
+using LmdMulti.Game;
 
 namespace LmdMulti.Race;
 
@@ -15,6 +16,8 @@ internal static class TrackAccess
     private sealed class Forced { public ObjectPublicInm_StObm_InStUnique Info; public EnumPublicSealedva5v2 Flags; public SubMountain Sub; public bool WasPlayable; }
 
     private static readonly Dictionary<string, Forced> ForcedTracks = new();
+    /// Sélection du joueur avant qu'une course ne sélectionne une piste forcée (rendue une fois en piste).
+    private static string _selectionBefore;
 
     public static bool IsForced(string trackId) => trackId != null && ForcedTracks.ContainsKey(trackId);
     public static bool HasForced => ForcedTracks.Count > 0;
@@ -43,7 +46,9 @@ internal static class TrackAccess
             if (!trackId.StartsWith(mountain.m_mountainID + "_")) continue;
             int idx = mountain.Method_Public_Virtual_Final_New_Int32_String_Boolean_0(trackId, false);
             if (idx < 0) break;
+            string before = GameInfo.SelectedTrackId();
             if (!Unlock(mountain, trackId, out error)) return false;
+            if (IsForced(trackId) && before != null && !IsForced(before)) _selectionBefore ??= before;
             mm.Method_Private_Void_Int32_0(m);   // montagne
             mm.Method_Private_Void_Int32_1(idx); // piste
             return true;
@@ -69,20 +74,31 @@ internal static class TrackAccess
                 };
                 info.Method_Public_Void_Boolean_0(true); // jour et nuit, en mémoire seulement
                 if (!sub.IsPlayable) sub.IsPlayable = true;
-                Log.Info($"course : {trackId} verrouillée chez toi, accès ouvert le temps de la course (heure du jour {(int)tod})");
+                Log.Info($"course : {trackId} verrouillée chez toi, accès ouvert le temps de la course (heure du jour {(int)tod}, sous-montagne jouable : {ForcedTracks[trackId].WasPlayable})");
                 return true;
             }
         error = $"piste introuvable : {trackId}";
         return false;
     }
 
-    /// Remet les verrous forcés des pistes où l'on n'est plus (appelé régulièrement).
-    public static void RestoreExcept(string currentTrack)
+    /// Une fois sur la piste forcée (déjà chargée) : rend au menu la sélection d'avant la course.
+    /// Revenir au menu avec une montagne verrouillée sélectionnée laisse le vélo du jeu dans son état de
+    /// piste (entrées, ragdoll) : le chargement suivant se fige alors (NullReferenceException dans
+    /// BikeLocomotion, caméra ; docs/game-api.md § 4). Rend aussi au profil sa piste active d'origine.
+    public static void RestoreSelection()
     {
-        if (ForcedTracks.Count == 0) return;
+        if (_selectionBefore == null) return;
+        string id = _selectionBefore;
+        _selectionBefore = null;
+        if (Select(id, out string error)) Log.Info($"course : sélection du menu rendue ({id})");
+        else Log.Warn($"course : sélection du menu non rendue ({id}) : {error}");
+    }
+
+    /// Remet les verrous forcés (au menu installé : RaceController).
+    public static void RestoreAll()
+    {
         foreach (var id in new List<string>(ForcedTracks.Keys))
         {
-            if (id == currentTrack) continue;
             var f = ForcedTracks[id];
             ForcedTracks.Remove(id);
             Log.Try("course : verrou remis", () =>

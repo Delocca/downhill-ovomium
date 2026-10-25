@@ -10,7 +10,7 @@ namespace LmdMulti.Game;
 /// Lecture de l'état du jeu (voir docs/game-api.md) : piste en cours, nom affiché, compte Steam.
 internal static class GameInfo
 {
-    public const int StateOnTrack = 100;
+    public const int StateMenus = 10, StateOnTrack = 100;
     private static readonly Dictionary<string, string> TrackNames = new();
 
     public static int State() => (int)GameStateManager.prop_EnumNPublicSealedva5vUnique_0;
@@ -48,6 +48,22 @@ internal static class GameInfo
         if (string.IsNullOrEmpty(name)) return id; // pas de cache : réessai plus tard (localisation pas prête)
         return TrackNames[id] = name;
     }
+
+    /// Écran de chargement encore visible (la piste peut être « en cours » avant qu'il ne disparaisse).
+    public static bool LoadingVisible()
+    {
+        foreach (var o in Object.FindObjectsOfType<LoadingScreenOverlay>())
+        {
+            if (!o.isActiveAndEnabled) continue;
+            var group = o.field_Private_CanvasGroup_0;
+            if (group == null || group.alpha > 0.01f) return true;
+        }
+        return false;
+    }
+
+    /// Menu de jeu affiché, hors de tout chargement (état menus, écran GameMenu présent, pas d'écran de chargement).
+    public static bool MenuSettled() =>
+        State() == StateMenus && Object.FindObjectOfType<GameMenu>() != null && !LoadingVisible();
 
     private static PauseScreen _pause;
     private static double _nextPauseSearch;

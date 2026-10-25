@@ -103,7 +103,10 @@ public class LmdMultiMod : MelonMod
     {
         if (now < _nextLocalRefresh) return;
         _nextLocalRefresh = now + 500;
+        // Pendant un chargement, la piste lue peut être l'ancienne, et le vélo est en cours de mise en place :
+        // ni annonce sur une piste, ni capture de pose, ni marionnette avant la fin de l'écran de chargement.
         string track = GameInfo.CurrentTrackId();
+        if (track != null && GameInfo.LoadingVisible()) track = null;
         if (track != _myTrack) Log.Info($"piste locale : {track ?? "(hors piste)"}");
         _myTrack = track;
         ulong steamId = 0;

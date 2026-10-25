@@ -17,6 +17,7 @@ public enum InviteChoice
 ///    reçoit l'invitation du premier ;
 ///  - un tiers qui reçoit les deux garde celle de l'hôte prioritaire, quel que soit l'ordre d'arrivée.
 /// Une course dont un invité a déjà accepté n'est jamais abandonnée (ce n'est plus un lancement simultané).
+/// Un invité déjà arrivé ou qui a abandonné est libre (l'hôte, lui, reste occupé : il mène la course).
 public static class RaceInvites
 {
     public static InviteChoice Decide(IRaceSession current, ulong inviter)
@@ -24,6 +25,7 @@ public static class RaceInvites
         if (current == null || current.View.IsOver) return InviteChoice.Show;
         if (current is RaceGuest { IsPending: true } g)
             return inviter == g.HostId || inviter < g.HostId ? InviteChoice.Show : InviteChoice.Decline;
+        if (current is RaceGuest && current.Me?.IsActive != true) return InviteChoice.Show; // déjà arrivé ou abandonné : libre
         if (current is RaceHost { View.Phase: RacePhase.Gathering } h && !h.HasAcceptedGuests && inviter < h.MyId)
             return InviteChoice.Yield;
         return InviteChoice.Decline;

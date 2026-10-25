@@ -28,8 +28,10 @@ public sealed class RaceLobby
         _rng = seed.HasValue ? new Random(seed.Value) : new Random();
     }
 
-    /// Engagé dans une course non terminée (une invitation en attente ne compte pas).
-    public bool Busy => Session != null && !Session.View.IsOver && Session is not RaceGuest { IsPending: true };
+    /// Engagé dans une course non terminée : hôte, ou invité encore en lice (une invitation en attente,
+    /// une arrivée ou un abandon ne comptent pas).
+    public bool Busy => Session != null && !Session.View.IsOver
+                        && (Session is RaceHost || Session is RaceGuest { IsPending: false } && Session.Me?.IsActive == true);
 
     public RaceGuest PendingInvite => Session is RaceGuest { IsPending: true } g ? g : null;
 

@@ -58,6 +58,7 @@ internal static class Commands
         ["online"] = id => OnlineScores.Read(id),                                                           // online RO_01_A4 (lecture seule)
 
         ["call"] = spec => Invoker.Call(spec),
+        ["refs"] = type => RefProbe.Run(type),                                                              // refs [Type] : références périmées ?
     };
 
     public static void Run(string line)

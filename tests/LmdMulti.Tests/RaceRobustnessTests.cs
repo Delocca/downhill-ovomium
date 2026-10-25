@@ -278,6 +278,15 @@ public class RaceRobustnessTests
         Assert.Equal(RacerState.Declined, net.H(8).View.Find(2).State);
         Assert.Equal(1UL, net.G(2).HostId);
 
+        net.S(2).Abandon(net.Now); // sorti de la course : de nouveau libre
+        net.Tick(100);
+        Assert.False(net.Nodes[2].Busy);
+        net.Add(9);
+        net.Nodes[9].Host("AL_01_A1", new[] { (2UL, "P2") }, "P9", net.Now);
+        net.Tick(100);
+        Assert.Equal(9UL, net.G(2).HostId);
+        Assert.True(net.G(2).IsPending);
+
         var lobby = new RaceLobby(50, (_, _) => { }, _ => null);
         lobby.OnMessage(30, RaceMessages.Invite(1, Track, "P30"), 0, "moi");
         Assert.Equal(InviteChoice.Decline, lobby.OnMessage(40, RaceMessages.Invite(2, Track, "P40"), 0, "moi").Choice);

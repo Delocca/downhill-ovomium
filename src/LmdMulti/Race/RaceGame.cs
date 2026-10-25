@@ -3,6 +3,7 @@ using Il2Cpp;
 using Il2CppMegagon.Downhill;
 using Il2CppMegagon.Downhill.UI.Screens;
 using LmdMulti.Core.Net;
+using LmdMulti.Game;
 using UnityEngine;
 
 namespace LmdMulti.Race;
@@ -28,18 +29,6 @@ internal static class RaceGame
         foreach (var p in Resources.FindObjectsOfTypeAll<PauseScreen>())
             if (p.gameObject.scene.IsValid()) { p.OnRestartRun(); return; } // pas le prefab
         Log.Warn("course : écran pause introuvable, pas de retour au départ");
-    }
-
-    /// Écran de chargement encore visible (la piste peut être « en cours » avant qu'il ne disparaisse).
-    public static bool LoadingVisible()
-    {
-        foreach (var o in Object.FindObjectsOfType<LoadingScreenOverlay>())
-        {
-            if (!o.isActiveAndEnabled) continue;
-            var group = o.field_Private_CanvasGroup_0;
-            if (group == null || group.alpha > 0.01f) return true;
-        }
-        return false;
     }
 
     /// Chrono affiché par le jeu (contrôle du chrono du mod).
