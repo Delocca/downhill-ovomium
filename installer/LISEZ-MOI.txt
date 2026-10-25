@@ -1,0 +1,82 @@
+LmdMulti @MOD_VERSION@ - jouer à plusieurs à Lonely Mountains: Downhill (réseau local)
+==================================================================================
+
+Vous voyez les autres joueurs du même réseau rouler sur votre piste, et vous pouvez
+lancer des courses ensemble. Pour Lonely Mountains: Downhill 1.6 sur Steam (Windows).
+
+
+INSTALLER
+---------
+1. Clic droit sur le fichier .zip → « Extraire tout… » → Extraire.
+2. Dans le dossier extrait, double-cliquez sur « Installer LmdMulti ».
+3. Windows demande une autorisation (pare-feu) : cliquez « Oui ».
+4. Un message confirme l'installation. C'est tout.
+
+Si Windows affiche « Windows a protégé votre ordinateur » :
+cliquez « Informations complémentaires » puis « Exécuter quand même ».
+(Le mod n'est pas signé par un éditeur connu, c'est normal.)
+
+PREMIER LANCEMENT : LONG (2 à 10 minutes)
+Une fenêtre noire (MelonLoader) prépare le jeu. C'est normal : ne fermez rien,
+le jeu s'ouvre ensuite. Les lancements suivants sont rapides.
+
+
+JOUER
+-----
+Tous les joueurs doivent être sur le même réseau (même box / même Wi-Fi) et avoir
+la même version de LmdMulti. Les autres apparaissent tout seuls.
+
+  F8                  afficher / cacher la liste des joueurs
+  F6                  lancer une course sur votre piste, ou accepter une invitation
+  F6 maintenu 1,5 s   abandonner la course (ou l'annuler si vous l'avez lancée)
+  F7                  changer l'aspect des autres joueurs (normal / transparent / teinté)
+  Manette : Select (Affichage) maintenu + A = comme F6 ; Select + B maintenus = abandonner
+            (appuyez sur Select AVANT A ou B)
+
+Une invitation sans réponse est refusée au bout de 15 secondes.
+
+
+ÇA NE MARCHE PAS ?
+------------------
+- Personne n'apparaît :
+  * Vérifiez que tout le monde a lancé l'installeur et le même LmdMulti (F8 le dit).
+  * Pare-feu : relancez « Installer LmdMulti » et répondez « Oui » à Windows.
+    Si Windows demande d'autoriser le jeu sur le réseau : cochez « Réseaux privés »,
+    puis « Autoriser l'accès ».
+  * Votre réseau doit être « Privé » : Paramètres → Réseau et Internet → votre
+    connexion → Type de profil réseau : Privé. (L'installeur le propose.)
+  * Certaines box ou Wi-Fi « invités » isolent les appareils : essayez un autre réseau.
+- Joueurs sur des réseaux différents (ex. via Tailscale) : ouvrez
+  <dossier du jeu>\UserData\LmdMulti.cfg avec le Bloc-notes (jeu fermé) et mettez
+  leurs adresses IP : ManualPeers = "100.64.0.2, 100.64.0.3"
+  (chacun met celles des autres ; le port UDP utilisé est 47700).
+- Le jeu ne démarre plus / plante : lancez « Desinstaller LmdMulti », puis dans
+  Steam : clic droit sur le jeu → Propriétés → Fichiers installés → Vérifier
+  l'intégrité des fichiers.
+- Windows bloque l'installeur sans bouton « Exécuter quand même » (Smart App
+  Control) : clic droit sur le .zip → Propriétés → cochez « Débloquer » → OK,
+  puis extrayez-le à nouveau.
+- Envoyez à la personne qui vous a donné le mod :
+  * LmdMulti-installation.log (dans ce dossier)
+  * <dossier du jeu>\MelonLoader\Latest.log
+
+
+DÉSINSTALLER
+------------
+Double-cliquez sur « Desinstaller LmdMulti ». Le mod est retiré, et MelonLoader
+aussi si aucun autre mod ne s'en sert (il vous le demande). Vos réglages restent
+dans <dossier du jeu>\UserData.
+
+
+LINUX / STEAM DECK
+------------------
+Dans un terminal, depuis ce dossier :  bash install-linux.sh
+(désinstaller : bash install-linux.sh uninstall). Jeu fermé, sans sudo.
+
+
+CONTENU ET LICENCES
+-------------------
+- LmdMulti @MOD_VERSION@ (fichiers\LmdMulti.dll), par Edia.
+- MelonLoader @MELON_VERSION@ (fichiers\melonloader), chargeur de mods de LavaGang,
+  licence Apache-2.0 : voir fichiers\MelonLoader-LICENSE.md et MelonLoader-NOTICE.txt.
+  https://github.com/LavaGang/MelonLoader
