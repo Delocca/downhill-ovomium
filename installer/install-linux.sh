@@ -1,13 +1,13 @@
 #!/bin/bash
-# LmdMulti pour Linux / Steam Deck (jeu Windows lancé par Proton). Sans sudo.
+# Ovomium pour Linux / Steam Deck (jeu Windows lancé par Proton). Sans sudo.
 #   bash install-linux.sh             installe (ou met à jour)
 #   bash install-linux.sh uninstall   désinstalle
-# Ce que fait l'installation : copie MelonLoader, LmdMulti.dll et LMD-Camera.dll dans le dossier du jeu, puis
+# Ce que fait l'installation : copie MelonLoader, Ovomium.dll et LMD-Camera.dll dans le dossier du jeu, puis
 # règle la DLL « version » en « native,builtin » dans le registre du préfixe Proton du jeu
 # (compatdata/711540/pfx/user.reg, copie de sauvegarde à côté), pour que Wine charge MelonLoader.
-# Variables de test : LMDMULTI_STEAM_ROOTS (dossiers Steam séparés par « : »),
-# LMDMULTI_SKIP_RUNNING_CHECK=1, LMDMULTI_ANSWER=o|n (réponse aux questions sans terminal),
-# LMDMULTI_NO_TRASH=1 (supprimer au lieu de mettre à la corbeille).
+# Variables de test : OVOMIUM_STEAM_ROOTS (dossiers Steam séparés par « : »),
+# OVOMIUM_SKIP_RUNNING_CHECK=1, OVOMIUM_ANSWER=o|n (réponse aux questions sans terminal),
+# OVOMIUM_NO_TRASH=1 (supprimer au lieu de mettre à la corbeille).
 set -euo pipefail
 
 APP_ID=711540
@@ -20,7 +20,7 @@ say() { printf '%s\n' "$*"; }
 die() { printf '\nERREUR : %s\n' "$*" >&2; exit 1; }
 
 ask() { # ask "question" défaut(o|n) → 0 si oui
-    local answer="${LMDMULTI_ANSWER:-}"
+    local answer="${OVOMIUM_ANSWER:-}"
     if [[ -z "$answer" && -t 0 ]]; then
         read -r -p "$1 [o/n, défaut $2] " answer || true
     else
@@ -33,13 +33,13 @@ ask() { # ask "question" défaut(o|n) → 0 si oui
 
 remove_path() { # corbeille si possible
     [[ -e "$1" ]] || return 0
-    if [[ -z "${LMDMULTI_NO_TRASH:-}" ]] && command -v gio >/dev/null && gio trash "$1" 2>/dev/null; then
+    if [[ -z "${OVOMIUM_NO_TRASH:-}" ]] && command -v gio >/dev/null && gio trash "$1" 2>/dev/null; then
         say "  corbeille : $1"
     else rm -rf -- "$1"; say "  supprimé : $1"; fi
 }
 
 steam_roots() {
-    if [[ -n "${LMDMULTI_STEAM_ROOTS:-}" ]]; then tr ':' '\n' <<<"$LMDMULTI_STEAM_ROOTS"; return; fi
+    if [[ -n "${OVOMIUM_STEAM_ROOTS:-}" ]]; then tr ':' '\n' <<<"$OVOMIUM_STEAM_ROOTS"; return; fi
     printf '%s\n' "$HOME/.steam/steam" "$HOME/.local/share/Steam" \
         "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam" "$HOME/snap/steam/common/.local/share/Steam"
 }
@@ -70,7 +70,7 @@ find_game() { # écrit LIB et GAME
 }
 
 check_closed() {
-    [[ "${LMDMULTI_SKIP_RUNNING_CHECK:-}" == 1 ]] && return 0
+    [[ "${OVOMIUM_SKIP_RUNNING_CHECK:-}" == 1 ]] && return 0
     if pgrep -f "$EXE" >/dev/null; then die "le jeu est ouvert : quitte-le puis relance ce script."; fi
 }
 
@@ -83,7 +83,7 @@ set_override() {
             "Ou, dans Steam : Propriétés du jeu → Options de lancement : WINEDLLOVERRIDES=\"version=n,b\" %command%"
         return 0
     fi
-    [[ -f "$reg.lmdmulti-sauvegarde" ]] || cp -p "$reg" "$reg.lmdmulti-sauvegarde"
+    [[ -f "$reg.ovomium-sauvegarde" ]] || cp -p "$reg" "$reg.ovomium-sauvegarde"
     local tmp
     tmp=$(mktemp "$reg.XXXXXX")
     awk -v mode="$mode" '
@@ -102,7 +102,7 @@ set_override() {
 }
 
 other_mods() {
-    find "$GAME/Mods" "$GAME/Plugins" -name '*.dll' ! -name 'LmdMulti.dll' 2>/dev/null || true
+    find "$GAME/Mods" "$GAME/Plugins" -name '*.dll' ! -name 'Ovomium.dll' 2>/dev/null || true
 }
 
 install_melon() {
@@ -116,11 +116,11 @@ install_melon() {
     fi
     say "Ce jeu a déjà une autre version de MelonLoader (ou un autre version.dll)."
     [[ -n "$(other_mods)" ]] && say "Autres mods présents : ils pourraient ne plus marcher." && other_mods
-    if ask "Remplacer par la version fournie (prévue pour LmdMulti) ?" o; then
+    if ask "Remplacer par la version fournie (prévue pour Ovomium) ?" o; then
         remove_path "$GAME/version.dll"; remove_path "$GAME/MelonLoader"
         cp -r "$want/." "$GAME/"; say "MelonLoader : remplacé"
     else
-        say "MelonLoader : gardé (LmdMulti risque de ne pas marcher)"
+        say "MelonLoader : gardé (Ovomium risque de ne pas marcher)"
     fi
 }
 
@@ -140,18 +140,18 @@ uninstall_camera() { # retire LMD-Camera seulement si identique à la copie livr
     if [[ -f "$PAYLOAD/$CAMERA" ]] && cmp -s "$PAYLOAD/$CAMERA" "$target"; then
         remove_path "$target"
     else
-        say "LMD-Camera gardé : $target n'est pas la copie installée par LmdMulti (supprime-le si tu n'en veux plus)."
+        say "LMD-Camera gardé : $target n'est pas la copie installée par Ovomium (supprime-le si tu n'en veux plus)."
     fi
 }
 
 do_install() {
-    [[ -f "$PAYLOAD/LmdMulti.dll" && -f "$PAYLOAD/$CAMERA" ]] || die "fichiers manquants : extrais tout le zip."
+    [[ -f "$PAYLOAD/Ovomium.dll" && -f "$PAYLOAD/$CAMERA" ]] || die "fichiers manquants : extrais tout le zip."
     install_melon
     mkdir -p "$GAME/Mods"
-    cp "$PAYLOAD/LmdMulti.dll" "$GAME/Mods/LmdMulti.dll"
-    say "Mod copié : $GAME/Mods/LmdMulti.dll"
+    cp "$PAYLOAD/Ovomium.dll" "$GAME/Mods/Ovomium.dll"
+    say "Mod copié : $GAME/Mods/Ovomium.dll"
     install_camera
-    [[ -f "$GAME/UserData/LmdMulti.cfg" ]] && say "Réglages existants gardés : $GAME/UserData/LmdMulti.cfg"
+    [[ -f "$GAME/UserData/Ovomium.cfg" ]] && say "Réglages existants gardés : $GAME/UserData/Ovomium.cfg"
     set_override set
     say "" "Installé ! Lance le jeu depuis Steam." \
         "Premier lancement LONG (2 à 10 min, fenêtre noire de MelonLoader) : c'est normal, ne ferme rien." \
@@ -159,7 +159,7 @@ do_install() {
 }
 
 do_uninstall() {
-    remove_path "$GAME/Mods/LmdMulti.dll"
+    remove_path "$GAME/Mods/Ovomium.dll"
     uninstall_camera # avant le test « autres mods » : notre copie ne doit pas retenir MelonLoader
     if [[ -n "$(other_mods)" ]]; then
         say "MelonLoader gardé : d'autres mods s'en servent."
@@ -169,7 +169,7 @@ do_uninstall() {
         local d; for d in Mods Plugins UserLibs; do rmdir "$GAME/$d" 2>/dev/null || true; done
         set_override unset
     fi
-    say "" "LmdMulti est désinstallé. Tes réglages restent dans $GAME/UserData."
+    say "" "Ovomium est désinstallé. Tes réglages restent dans $GAME/UserData."
 }
 
 main() {

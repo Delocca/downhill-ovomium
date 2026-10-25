@@ -1,15 +1,15 @@
-# Distribution de LmdMulti (installeur Windows, Linux)
+# Distribution d'Ovomium (installeur Windows, Linux)
 
 Objectif : un ami peu technique sous Windows extrait un zip, double-clique, répond « Oui » à Windows, et joue.
 
 ## Fabriquer le paquet
 
 ```
-tools/make-dist.sh             # compile src/LmdMulti (Release) puis emballe
+tools/make-dist.sh             # compile src/Ovomium (Release) puis emballe
 tools/make-dist.sh --no-build  # emballe la DLL déjà compilée
 ```
 
-→ `dist/LmdMulti-<version>.zip` (version lue dans `LmdMultiMod.Version`) et son SHA-256. Besoins : `refs/` (compilation), `vendor/MelonLoader.x64-0.7.3.zip` et `vendor/LMD-Camera-1.1.0/LMD-Camera.dll` (téléchargés depuis les releases GitHub officielles s'ils manquent ; empreintes SHA-256 vérifiées, épinglées dans le script). Zip reproductible : ordre trié, dates fixées à celle du dernier commit.
+→ `dist/downhill-ovomium-<version>.zip` (version lue dans `OvomiumMod.Version`) et son SHA-256. Besoins : `refs/` (compilation), `vendor/MelonLoader.x64-0.7.3.zip` et `vendor/LMD-Camera-1.1.0/LMD-Camera.dll` (téléchargés depuis les releases GitHub officielles s'ils manquent ; empreintes SHA-256 vérifiées, épinglées dans le script). Zip reproductible : ordre trié, dates fixées à celle du dernier commit.
 
 Le script convertit pour Windows : fins de ligne CRLF partout (un .bat en LF casse `goto`), BOM UTF-8 sur les `.ps1` et le `LISEZ-MOI.txt` (sans BOM, Windows PowerShell 5.1 lit en ANSI : accents cassés), et remplace `@MOD_VERSION@`, `@MELON_VERSION@`, `@TESTED_BUILD@`. Les sources dans `installer/` restent en UTF-8/LF sans BOM.
 
@@ -18,13 +18,13 @@ Le script convertit pour Windows : fins de ligne CRLF partout (un .bat en LF cas
 ## Contenu du zip
 
 ```
-LmdMulti-<v>/
-  Installer LmdMulti.bat       lance fichiers\scripts\Install.ps1
-  Desinstaller LmdMulti.bat    lance fichiers\scripts\Uninstall.ps1
+downhill-ovomium-<v>/
+  Installer Ovomium.bat       lance fichiers\scripts\Install.ps1
+  Desinstaller Ovomium.bat    lance fichiers\scripts\Uninstall.ps1
   LISEZ-MOI.txt                installer, premier lancement long, commandes, dépannage, désinstaller
   install-linux.sh             Linux / Steam Deck (Proton)
   fichiers/
-    LmdMulti.dll               le mod (LmdExplorer n'est jamais livré)
+    Ovomium.dll               le mod (LmdExplorer n'est jamais livré)
     melonloader/               archive officielle MelonLoader 0.7.3 extraite (version.dll + MelonLoader/)
     MelonLoader-LICENSE.md, MelonLoader-NOTICE.txt   Apache-2.0 (aussi dans melonloader/MelonLoader/Documentation)
     LMD-Camera.dll             mod de vue à la 1re personne de flo-st, 1.1.0, tel quel
@@ -43,23 +43,23 @@ Noms de fichiers en ASCII (l'extracteur de zip de Windows gère mal les noms acc
 
 **Zéro question si tout va bien.** Les seules questions possibles : jeu introuvable (sélecteur de dossier), jeu ouvert (Réessayer), autre MelonLoader déjà là (remplacer ?), `version.dll` étranger (remplacer ?), réseau en profil Public (passer en Privé ?). Toutes sont journalisées avec la réponse.
 
-**Pare-feu : règle créée à l'installation (UAC), pas la question de Windows au premier lancement.** La question de Windows (« Alerte de sécurité Windows ») s'ouvre **sous** un jeu plein écran (doc Microsoft), donc l'ami ne la voit pas ; et « Annuler » (ou un compte non administrateur) crée des règles de **blocage**, qui l'emportent sur toute règle d'autorisation. L'installeur demande donc l'élévation (UAC, une fois, fenêtre cachée) uniquement pour `Elevated.ps1` : retire les règles de blocage entrantes visant `LMD_Win_x64.exe` (profil Privé), ajoute la règle « LmdMulti - Lonely Mountains: Downhill (UDP entrant) » (groupe `LmdMulti`, programme = exe du jeu, UDP, tous ports car `Port` est réglable, profils Privé et Domaine), et passe en Privé les réseaux acceptés. Si la règle est déjà en place et qu'aucun réseau n'est Public, pas d'UAC (mise à jour = zéro question). UAC refusé : le message final explique quoi cocher si Windows pose la question.
+**Pare-feu : règle créée à l'installation (UAC), pas la question de Windows au premier lancement.** La question de Windows (« Alerte de sécurité Windows ») s'ouvre **sous** un jeu plein écran (doc Microsoft), donc l'ami ne la voit pas ; et « Annuler » (ou un compte non administrateur) crée des règles de **blocage**, qui l'emportent sur toute règle d'autorisation. L'installeur demande donc l'élévation (UAC, une fois, fenêtre cachée) uniquement pour `Elevated.ps1` : retire les règles de blocage entrantes visant `LMD_Win_x64.exe` (profil Privé), ajoute la règle « Ovomium - Lonely Mountains: Downhill (UDP entrant) » (groupe `Ovomium`, programme = exe du jeu, UDP, tous ports car `Port` est réglable, profils Privé et Domaine), et passe en Privé les réseaux acceptés. Si la règle est déjà en place et qu'aucun réseau n'est Public, pas d'UAC (mise à jour = zéro question). UAC refusé : le message final explique quoi cocher si Windows pose la question.
 
 **Profil réseau Public.** En Public, la règle (Privé) ne s'applique pas : les autres joueurs ne nous voient pas. L'installeur liste les connexions actives en Public et propose de les passer en Privé (recommandé à la maison, pas dans un lieu public).
 
-**MelonLoader.** Version installée lue dans les métadonnées de `version.dll` (sinon `MelonLoader/net6/MelonLoader.dll`). Absent → installé ; même version → rien (réparé si incomplet) ; autre version → question (Oui recommandé si plus ancienne, Non si plus récente), l'ancien part à la corbeille ; `version.dll` qui n'est pas MelonLoader → question, Non par défaut (= abandon sans rien modifier). `UserData/` n'est jamais touché (la config `LmdMulti.cfg` est créée par le mod lui-même).
+**MelonLoader.** Version installée lue dans les métadonnées de `version.dll` (sinon `MelonLoader/net6/MelonLoader.dll`). Absent → installé ; même version → rien (réparé si incomplet) ; autre version → question (Oui recommandé si plus ancienne, Non si plus récente), l'ancien part à la corbeille ; `version.dll` qui n'est pas MelonLoader → question, Non par défaut (= abandon sans rien modifier). `UserData/` n'est jamais touché (la config `Ovomium.cfg` est créée par le mod lui-même).
 
 **LMD-Camera (vue à la première personne).** Mod MelonLoader de flo-st (https://github.com/flo-st/LMD-Camera, licence MIT), livré **tel quel** : release officielle 1.1.0 (tag = commit `84785d8`), empreinte SHA-256 épinglée dans `make-dist.sh` (`CAMERA_SHA256`), licence copiée à côté (`installer/licences/LMD-Camera-LICENSE.txt`, exigence de la MIT) et créditée dans le LISEZ-MOI. Les touches 1/2/3 et `UserData/LMD-Camera.cfg` sont celles du mod. L'installeur copie `Mods/LMD-Camera.dll` en écrasant toute version existante (journalisé : « identique » ou « remplace une autre version »). **Règle de désinstallation** : le fichier n'est retiré que s'il est identique à `fichiers/LMD-Camera.dll` du paquet (SHA-256 sous Windows, `cmp` sous Linux) ; sinon c'est une copie du joueur, gardée et signalée (journal + message final). Comparer au fichier livré plutôt qu'à une empreinte recopiée dans les scripts : rien à dupliquer ni à tenir à jour. Limite : désinstaller avec un paquet livrant une autre version de LMD-Camera que celle installée garde le fichier. Ce retrait a lieu **avant** le test « autres mods », pour que notre copie ne retienne pas MelonLoader.
 
-**Désinstalleur.** Retire `Mods/LmdMulti.dll` (corbeille), `Mods/LMD-Camera.dll` s'il est identique à la copie livrée (voir ci-dessus) et la règle du groupe `LmdMulti` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde `UserData/`.
+**Désinstalleur.** Retire `Mods/Ovomium.dll` (corbeille), `Mods/LMD-Camera.dll` s'il est identique à la copie livrée (voir ci-dessus) et la règle du groupe `Ovomium` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde `UserData/`.
 
-**Journal** : `LmdMulti-installation.log` / `LmdMulti-desinstallation.log` à côté des `.bat` (ou `%TEMP%` si le dossier n'est pas inscriptible) ; l'étape administrateur écrit dans le même fichier.
+**Journal** : `Ovomium-installation.log` / `Ovomium-desinstallation.log` à côté des `.bat` (ou `%TEMP%` si le dossier n'est pas inscriptible) ; l'étape administrateur écrit dans le même fichier.
 
 **Codes de sortie** : 0 réussi, 21-24 annulé (déjà expliqué à l'écran), 9 erreur, 1 PowerShell n'a pas pu lancer le script. Le `.bat` garde la console ouverte (pause) seulement pour 1 à 19.
 
 ## Linux / Steam Deck : `install-linux.sh`
 
-Sans sudo, jeu fermé. Trouve le jeu (dossiers Steam natif, Flatpak, Snap ; `libraryfolders.vdf`, `appmanifest_711540.acf`), copie MelonLoader (comparaison octet à octet ; autre version → question), la DLL et LMD-Camera, puis règle l'override dans le **registre du préfixe Proton** : `compatdata/711540/pfx/user.reg`, section `[Software\\Wine\\DllOverrides]`, `"version"="native,builtin"` (copie `user.reg.lmdmulti-sauvegarde` avant la première modification). Choisi plutôt que l'option de lancement Steam (`WINEDLLOVERRIDES="version=n,b" %command%`) : celle-ci vit dans `localconfig.vdf`, que Steam réécrit tant qu'il tourne (modifiable seulement Steam fermé, fragile) ; `user.reg` n'est réécrit que par Wine, donc sûr jeu fermé. C'est la méthode utilisée chez Edia. Si le préfixe n'existe pas encore (jeu jamais lancé), le script le dit et donne l'option de lancement en repli. `uninstall` retire la DLL, LMD-Camera s'il est identique à la copie livrée, et sur accord MelonLoader et l'override. À refaire si une mise à jour de Proton recrée le préfixe.
+Sans sudo, jeu fermé. Trouve le jeu (dossiers Steam natif, Flatpak, Snap ; `libraryfolders.vdf`, `appmanifest_711540.acf`), copie MelonLoader (comparaison octet à octet ; autre version → question), la DLL et LMD-Camera, puis règle l'override dans le **registre du préfixe Proton** : `compatdata/711540/pfx/user.reg`, section `[Software\\Wine\\DllOverrides]`, `"version"="native,builtin"` (copie `user.reg.ovomium-sauvegarde` avant la première modification). Choisi plutôt que l'option de lancement Steam (`WINEDLLOVERRIDES="version=n,b" %command%`) : celle-ci vit dans `localconfig.vdf`, que Steam réécrit tant qu'il tourne (modifiable seulement Steam fermé, fragile) ; `user.reg` n'est réécrit que par Wine, donc sûr jeu fermé. C'est la méthode utilisée chez Edia. Si le préfixe n'existe pas encore (jeu jamais lancé), le script le dit et donne l'option de lancement en repli. `uninstall` retire la DLL, LMD-Camera s'il est identique à la copie livrée, et sur accord MelonLoader et l'override. À refaire si une mise à jour de Proton recrée le préfixe.
 
 ## Tests
 

@@ -65,13 +65,13 @@ function Compare-Version3([string]$A, [string]$B) {
 function Get-ReplaceQuestion([string]$Have, [string]$Want, [int]$OtherMods) {
     $haveText = if ($Have) { "MelonLoader $Have" } else { 'une version inconnue de MelonLoader' }
     $older = (Compare-Version3 $Have $Want) -lt 0
-    $text = "Ce jeu a déjà $haveText. LmdMulti est prévu pour MelonLoader $Want.`n`n"
+    $text = "Ce jeu a déjà $haveText. Ovomium est prévu pour MelonLoader $Want.`n`n"
     if ($OtherMods -gt 0) {
         $text += "Vous avez $OtherMods autre(s) mod(s) : ils pourraient ne plus marcher avec $Want.`n`n"
     }
     $text += "Remplacer par MelonLoader $Want ?`n`n" +
         "Oui : remplacer (l'ancien va à la corbeille ; le prochain lancement sera long).`n" +
-        "Non : garder l'actuel (LmdMulti risque de ne pas marcher)."
+        "Non : garder l'actuel (Ovomium risque de ne pas marcher)."
     if ($older) { $text += "`n`nRecommandé : Oui." } else { $text += "`n`nRecommandé : Non (version plus récente)." }
     return @{ Text = $text; Default = $older }
 }
@@ -101,14 +101,14 @@ function Install-MelonLoader([string]$GameDir, [string]$Payload) {
     return 'installé'
 }
 
-# Mods et plugins autres que LmdMulti (noms de fichiers).
+# Mods et plugins autres qu'Ovomium (noms de fichiers).
 function Get-OtherMods([string]$GameDir) {
     $found = @()
     foreach ($sub in @('Mods', 'Plugins')) {
         $dir = Join-Path $GameDir $sub
         if (-not (Test-Path -LiteralPath $dir)) { continue }
         $found += @(Get-ChildItem -LiteralPath $dir -Recurse -File -Filter '*.dll' |
-            Where-Object { $_.Name -ne 'LmdMulti.dll' } | ForEach-Object { $_.Name })
+            Where-Object { $_.Name -ne 'Ovomium.dll' } | ForEach-Object { $_.Name })
     }
     return ,$found
 }

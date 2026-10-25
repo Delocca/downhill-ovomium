@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Cœur partagé sans Unity : protocole, réseau UDP, interpolation des poses, enregistrements.
+       Le mod compile ces sources directement (fichiers liés, une seule DLL à installer) ;
+       le bot et les tests référencent ce projet. -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Ovomium.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

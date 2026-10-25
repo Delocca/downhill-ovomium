@@ -1,4 +1,4 @@
-# Journal et boîtes de dialogue de l'installeur LmdMulti (Windows PowerShell 5.1 et pwsh 7).
+# Journal et boîtes de dialogue de l'installeur Ovomium (Windows PowerShell 5.1 et pwsh 7).
 # Sans interface (tests sous Linux, ou -Answers donné) : les questions prennent la réponse prévue
 # dans $script:AnswerMap (ou leur valeur par défaut), les messages vont seulement au journal.
 
@@ -58,7 +58,7 @@ function Show-Box([string]$Text, [string]$Buttons, [string]$Icon, [string]$Defau
     $owner = New-DialogOwner
     try {
         $defaultButton = if ($Default -eq 'Button2') { 'Button2' } else { 'Button1' }
-        return [System.Windows.Forms.MessageBox]::Show($owner, $Text, 'LmdMulti',
+        return [System.Windows.Forms.MessageBox]::Show($owner, $Text, 'Ovomium',
             $Buttons, $Icon, $defaultButton).ToString()
     } finally {
         $owner.Close()

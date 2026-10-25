@@ -1,4 +1,4 @@
-# Mod LMD-Camera de flo-st (vue à la première personne, licence MIT), livré tel quel avec LmdMulti.
+# Mod LMD-Camera de flo-st (vue à la première personne, licence MIT), livré tel quel avec Ovomium.
 # Désinstallé seulement si c'est la copie livrée (même SHA-256 que fichiers\LMD-Camera.dll) :
 # une autre version vient du joueur lui-même, on la garde.
 
@@ -37,8 +37,8 @@ function Uninstall-CameraMod([string]$GameDir, [string]$Payload) {
     }
     $have = Get-Sha256 $target
     if ($have -eq (Get-Sha256 $source)) { Remove-ToRecycleBin $target; return 'retiré' }
-    Write-Journal "LMD-Camera gardé : $target n'est pas la version livrée avec LmdMulti (SHA-256 $have)"
-    $script:Notes += "• Mods\$($script:CameraName) gardé : ce n'est pas la copie installée par LmdMulti " +
+    Write-Journal "LMD-Camera gardé : $target n'est pas la version livrée avec Ovomium (SHA-256 $have)"
+    $script:Notes += "• Mods\$($script:CameraName) gardé : ce n'est pas la copie installée par Ovomium " +
         '(vous l''aviez installé vous-même). Supprimez-le si vous n''en voulez plus.'
     return 'gardé'
 }

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using LmdMulti.Core.Net;
-using LmdMulti.Core.Poses;
-using LmdMulti.Core.Protocol;
+using Ovomium.Core.Net;
+using Ovomium.Core.Poses;
+using Ovomium.Core.Protocol;
 
 namespace LmdBot;
 

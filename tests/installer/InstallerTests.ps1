@@ -58,20 +58,20 @@ function Set-OldMelon([string]$Game, [string]$Version) {
 
 function Test-FreshInstall {
     $e = New-FakeSteam 'neuf'
-    Write-Text (P $e.Game 'UserData/LmdMulti.cfg') "Port = 47701`nNickname = `"Edia`"`n"
+    Write-Text (P $e.Game 'UserData/Ovomium.cfg') "Port = 47701`nNickname = `"Edia`"`n"
     $code = Invoke-Installer 'Install.ps1' $e
     Check ($code -eq 0) "neuf : code 0 (obtenu $code)"
-    Check (Test-Same (P $e.Game 'Mods/LmdMulti.dll') (P $Dist 'fichiers/LmdMulti.dll')) 'neuf : DLL copiée dans Mods'
+    Check (Test-Same (P $e.Game 'Mods/Ovomium.dll') (P $Dist 'fichiers/Ovomium.dll')) 'neuf : DLL copiée dans Mods'
     Check (Test-Same (P $e.Game 'Mods/LMD-Camera.dll') $camera) 'neuf : LMD-Camera copié dans Mods'
     Check (Test-Same (P $e.Game 'version.dll') (P $payloadMelon 'version.dll')) 'neuf : version.dll de MelonLoader'
     Check (Test-Path (P $e.Game 'MelonLoader/net6/MelonLoader.dll')) 'neuf : dossier MelonLoader'
-    Check ((Get-Content (P $e.Game 'UserData/LmdMulti.cfg') -Raw) -match 'Port = 47701') 'neuf : config existante intacte'
+    Check ((Get-Content (P $e.Game 'UserData/Ovomium.cfg') -Raw) -match 'Port = 47701') 'neuf : config existante intacte'
     $log = Get-Log $e
     Check ($log -match 'Bibliothèque Jeux 2') 'neuf : jeu trouvé dans la 2e bibliothèque'
     Check ($log -match 'MelonLoader : installé') 'neuf : MelonLoader installé'
     Check ($log -match 'Réglages existants gardés') 'neuf : config signalée gardée'
     Check ($log -notmatch 'mis à jour depuis') 'neuf : build testé, pas d''avertissement'
-    Check ($log -match 'LmdMulti 0\.\d+\.\d+ est installé') 'neuf : message final avec la version'
+    Check ($log -match 'Ovomium 0\.\d+\.\d+ est installé') 'neuf : message final avec la version'
 
     $code = Invoke-Installer 'Install.ps1' $e
     Check ($code -eq 0 -and ((Get-Log $e) -match 'MelonLoader : à jour')) 'réinstallation : MelonLoader déjà à jour'
@@ -87,7 +87,7 @@ function Test-NotFound {
     $manual = Join-Path $Work 'cases/manuel/Mon jeu'
     Write-Text (P $manual 'LMD_Win_x64.exe') 'exe'
     $code = Invoke-Installer 'Install.ps1' $e "Dossier=$manual"
-    Check ($code -eq 0 -and (Test-Path (P $manual 'Mods/LmdMulti.dll'))) 'introuvable : dossier choisi à la main'
+    Check ($code -eq 0 -and (Test-Path (P $manual 'Mods/Ovomium.dll'))) 'introuvable : dossier choisi à la main'
     $code = Invoke-Installer 'Install.ps1' $e "Dossier=$Work"
     Check ($code -eq 22) 'introuvable : dossier sans LMD_Win_x64.exe refusé'
 }
@@ -113,7 +113,7 @@ function Test-OtherMelon {
     $code = Invoke-Installer 'Install.ps1' $e
     Check ($code -eq 0 -and ((Get-Log $e) -match 'MelonLoader : gardé')) 'plus récent 0.8.0 sans réponse : gardé'
     Check ((Get-Content (P $e.Game 'version.dll') -Raw) -match 'ancien proxy') 'plus récent : version.dll intact'
-    Check (Test-Path (P $e.Game 'Mods/LmdMulti.dll')) 'plus récent : mod quand même copié'
+    Check (Test-Path (P $e.Game 'Mods/Ovomium.dll')) 'plus récent : mod quand même copié'
 }
 
 function Test-ForeignAndRepair {
@@ -138,7 +138,7 @@ function Test-ForeignAndRepair {
 function Test-Uninstall($Installed) {
     $e = $Installed
     $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Non'
-    Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'Mods/LmdMulti.dll'))) 'désinstallation : DLL retirée'
+    Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'Mods/Ovomium.dll'))) 'désinstallation : DLL retirée'
     Check (-not (Test-Path (P $e.Game 'Mods/LMD-Camera.dll'))) 'désinstallation : LMD-Camera livré retiré'
     Check (Test-Path (P $e.Game 'version.dll')) 'désinstallation + Non : MelonLoader gardé'
     [void](Invoke-Installer 'Install.ps1' $e)
@@ -146,7 +146,7 @@ function Test-Uninstall($Installed) {
     Check ((Get-Log $e) -match 'Question RetirerMelonLoader\].*-> Oui') 'désinstallation : LMD-Camera livré ne compte pas comme autre mod'
     Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'version.dll')) -and -not (Test-Path (P $e.Game 'MelonLoader'))) 'désinstallation (défaut Oui) : MelonLoader retiré'
     Check (-not (Test-Path (P $e.Game 'Mods'))) 'désinstallation : dossier Mods vide retiré'
-    Check (Test-Path (P $e.Game 'UserData/LmdMulti.cfg')) 'désinstallation : réglages gardés'
+    Check (Test-Path (P $e.Game 'UserData/Ovomium.cfg')) 'désinstallation : réglages gardés'
     Check (Test-Path (P $e.Game 'LMD_Win_x64.exe')) 'désinstallation : jeu intact'
 
     $e = New-FakeSteam 'desinst-autre'
@@ -170,7 +170,7 @@ function Test-CameraOwnership {
     Write-Text (P $e.Game 'Mods/LMD-Camera.dll') 'camera du joueur'
     $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Oui'
     Check ($code -eq 0 -and (Test-Path (P $e.Game 'Mods/LMD-Camera.dll'))) 'désinstallation, LMD-Camera différent : gardé'
-    Check (-not (Test-Path (P $e.Game 'Mods/LmdMulti.dll'))) 'désinstallation, LMD-Camera différent : LmdMulti retiré quand même'
+    Check (-not (Test-Path (P $e.Game 'Mods/Ovomium.dll'))) 'désinstallation, LMD-Camera différent : Ovomium retiré quand même'
     $log = Get-Log $e
     Check ($log -match 'LMD-Camera gardé' -and $log -match 'installé vous-même') 'désinstallation, LMD-Camera différent : dit dans le journal et le message'
     Check ((Test-Path (P $e.Game 'version.dll')) -and $log -notmatch 'Question RetirerMelonLoader') 'désinstallation, LMD-Camera différent : MelonLoader gardé sans question'

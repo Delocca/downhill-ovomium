@@ -1,14 +1,17 @@
-LmdMulti @MOD_VERSION@ - jouer à plusieurs à Lonely Mountains: Downhill (réseau local)
-==================================================================================
+Ovomium @MOD_VERSION@ - des améliorations pour Lonely Mountains: Downhill
+========================================================================
 
-Vous voyez les autres joueurs du même réseau rouler sur votre piste, et vous pouvez
-lancer des courses ensemble. Pour Lonely Mountains: Downhill 1.6 sur Steam (Windows).
+Pour Lonely Mountains: Downhill 1.6 sur Steam (Windows ; Linux et Steam Deck aussi) :
+- jouer à plusieurs en réseau local : vous voyez les autres joueurs rouler sur votre
+  piste, et vous pouvez lancer des courses ensemble ;
+- vue à la première personne ;
+- démarrage direct au menu, clavier AZERTY reconnu tout seul.
 
 
 INSTALLER
 ---------
 1. Clic droit sur le fichier .zip → « Extraire tout… » → Extraire.
-2. Dans le dossier extrait, double-cliquez sur « Installer LmdMulti ».
+2. Dans le dossier extrait, double-cliquez sur « Installer Ovomium ».
 3. Windows demande une autorisation (pare-feu) : cliquez « Oui ».
 4. Un message confirme l'installation. C'est tout.
 
@@ -24,7 +27,7 @@ le jeu s'ouvre ensuite. Les lancements suivants sont rapides.
 JOUER
 -----
 Tous les joueurs doivent être sur le même réseau (même box / même Wi-Fi) et avoir
-la même version de LmdMulti. Les autres apparaissent tout seuls.
+la même version d'Ovomium. Les autres apparaissent tout seuls.
 
   F8                  afficher / cacher la liste des joueurs
   F6                  lancer une course sur votre piste, ou accepter une invitation
@@ -41,12 +44,12 @@ DÉMARRAGE RAPIDE ET CLAVIER
 ---------------------------
 - Au lancement, les logos et l'écran « Appuyez sur… » sont passés : le jeu arrive
   directement au menu (environ 10 secondes de gagnées). Pour les revoir : dans
-  <dossier du jeu>\UserData\LmdMulti.cfg (Bloc-notes, jeu fermé), SkipIntro = false
+  <dossier du jeu>\UserData\Ovomium.cfg (Bloc-notes, jeu fermé), SkipIntro = false
 - Clavier AZERTY (ou QWERTZ…) : les touches lettres du jeu suivent votre clavier
   toutes seules. En AZERTY : Z Q S D pour rouler et diriger (au lieu de W A S D),
   comme dans les menus. Les flèches marchent toujours. Si la détection se trompe :
   KeyboardLayout = "azerty" (ou "qwertz", "qwerty" = touches d'origine du jeu)
-  dans LmdMulti.cfg. Les touches F6 à F9, V et 1/2/3 sont les mêmes partout.
+  dans Ovomium.cfg. Les touches F6 à F9, V et 1/2/3 sont les mêmes partout.
 
 
 VUE À LA PREMIÈRE PERSONNE (mod LMD-Camera)
@@ -69,31 +72,31 @@ https://github.com/flo-st/LMD-Camera
 ÇA NE MARCHE PAS ?
 ------------------
 - Personne n'apparaît :
-  * Vérifiez que tout le monde a lancé l'installeur et le même LmdMulti (F8 le dit).
-  * Pare-feu : relancez « Installer LmdMulti » et répondez « Oui » à Windows.
+  * Vérifiez que tout le monde a lancé l'installeur et le même Ovomium (F8 le dit).
+  * Pare-feu : relancez « Installer Ovomium » et répondez « Oui » à Windows.
     Si Windows demande d'autoriser le jeu sur le réseau : cochez « Réseaux privés »,
     puis « Autoriser l'accès ».
   * Votre réseau doit être « Privé » : Paramètres → Réseau et Internet → votre
     connexion → Type de profil réseau : Privé. (L'installeur le propose.)
   * Certaines box ou Wi-Fi « invités » isolent les appareils : essayez un autre réseau.
 - Joueurs sur des réseaux différents (ex. via Tailscale) : ouvrez
-  <dossier du jeu>\UserData\LmdMulti.cfg avec le Bloc-notes (jeu fermé) et mettez
+  <dossier du jeu>\UserData\Ovomium.cfg avec le Bloc-notes (jeu fermé) et mettez
   leurs adresses IP : ManualPeers = "100.64.0.2, 100.64.0.3"
   (chacun met celles des autres ; le port UDP utilisé est 47700).
-- Le jeu ne démarre plus / plante : lancez « Desinstaller LmdMulti », puis dans
+- Le jeu ne démarre plus / plante : lancez « Desinstaller Ovomium », puis dans
   Steam : clic droit sur le jeu → Propriétés → Fichiers installés → Vérifier
   l'intégrité des fichiers.
 - Windows bloque l'installeur sans bouton « Exécuter quand même » (Smart App
   Control) : clic droit sur le .zip → Propriétés → cochez « Débloquer » → OK,
   puis extrayez-le à nouveau.
 - Envoyez à la personne qui vous a donné le mod :
-  * LmdMulti-installation.log (dans ce dossier)
+  * Ovomium-installation.log (dans ce dossier)
   * <dossier du jeu>\MelonLoader\Latest.log
 
 
 DÉSINSTALLER
 ------------
-Double-cliquez sur « Desinstaller LmdMulti ». Le mod est retiré, LMD-Camera aussi
+Double-cliquez sur « Desinstaller Ovomium ». Le mod est retiré, LMD-Camera aussi
 (sauf si vous l'aviez installé vous-même), et MelonLoader si aucun autre mod ne
 s'en sert (il vous le demande). Vos réglages restent dans <dossier du jeu>\UserData.
 
@@ -106,7 +109,7 @@ Dans un terminal, depuis ce dossier :  bash install-linux.sh
 
 CONTENU ET LICENCES
 -------------------
-- LmdMulti @MOD_VERSION@ (fichiers\LmdMulti.dll), par Edia.
+- Ovomium @MOD_VERSION@ (fichiers\Ovomium.dll), par Edia.
 - MelonLoader @MELON_VERSION@ (fichiers\melonloader), chargeur de mods de LavaGang,
   licence Apache-2.0 : voir fichiers\MelonLoader-LICENSE.md et MelonLoader-NOTICE.txt.
   https://github.com/LavaGang/MelonLoader

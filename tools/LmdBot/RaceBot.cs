@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LmdMulti.Core.Net;
-using LmdMulti.Core.Race;
+using Ovomium.Core.Net;
+using Ovomium.Core.Race;
 
 namespace LmdBot;
 

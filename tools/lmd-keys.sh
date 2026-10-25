@@ -20,7 +20,7 @@ win() { xdotool search --onlyvisible --name "^Lonely Mountains: Downhill$" 2>/de
 focus() { local w; w=$(win); [ -n "$w" ] && xdotool windowfocus "$w" 2>/dev/null; xdotool mousemove 1023 767; }
 keys() { focus; for k in "$@"; do xdotool key "$k"; sleep 0.4; done; }
 
-# Écran titre > Commencer la partie > montagne > piste > défi > vélo : six fois Entrée (cinq si LmdMulti
+# Écran titre > Commencer la partie > montagne > piste > défi > vélo : six fois Entrée (cinq si Ovomium
 # a passé l'écran titre au lancement, réglage SkipIntro).
 enter() {
     local presses=6

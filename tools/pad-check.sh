@@ -1,7 +1,7 @@
 #!/bin/bash
 # Vérification courte des commandes de course à la manette, sur le vrai bureau d'Edia, avec sa manette.
 # Lancement (depuis Claude Code) :  ! gnome-terminal -- bash tools/pad-check.sh
-# Déploie LmdMulti en mode test (aucun temps enregistré), démarre un bot qui accepte les courses, lance
+# Déploie Ovomium en mode test (aucun temps enregistré), démarre un bot qui accepte les courses, lance
 # LMD via Steam, guide les essais, puis remet tout comme avant. Journal : /tmp/lmd-padcheck/
 set -u -o pipefail
 SESSION=/tmp/lmd-padcheck
@@ -10,7 +10,7 @@ exec > >(tee -a "$SESSION/session.log") 2>&1
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GAME="$HOME/.local/share/Steam/steamapps/common/Lonely Mountains - Downhill"
-CFG="$GAME/UserData/LmdMulti.cfg"
+CFG="$GAME/UserData/Ovomium.cfg"
 LOG="$GAME/MelonLoader/Latest.log"
 BOT_DLL="$ROOT/tools/LmdBot/bin/Release/net8.0/LmdBot.dll"
 JOIN_PID="" HOST_PID=""
@@ -21,11 +21,11 @@ mark() { echo "[$(date +%H:%M:%S)] REPÈRE : $*"; }
 cleanup() {
     say "Nettoyage"
     for pid in $JOIN_PID $HOST_PID; do kill "$pid" 2>/dev/null; done
-    for dll in LmdMulti LmdExplorer; do
+    for dll in Ovomium LmdExplorer; do
         if [ -f "$SESSION/$dll.dll.avant" ]; then cp "$SESSION/$dll.dll.avant" "$GAME/Mods/$dll.dll"
         elif [ -f "$GAME/Mods/$dll.dll" ]; then trash-put "$GAME/Mods/$dll.dll"; fi
     done
-    if [ -f "$SESSION/LmdMulti.cfg.avant" ]; then cp "$SESSION/LmdMulti.cfg.avant" "$CFG"
+    if [ -f "$SESSION/Ovomium.cfg.avant" ]; then cp "$SESSION/Ovomium.cfg.avant" "$CFG"
     elif [ -f "$CFG" ]; then trash-put "$CFG"; fi
     echo "Mods/ et config remis comme avant."
     cp "$LOG" "$SESSION/MelonLoader-Latest.log" 2>/dev/null
@@ -38,14 +38,14 @@ prepare() {
     if pgrep -f "[L]MD_Win_x64.exe" >/dev/null; then echo "Le jeu tourne déjà : ferme-le puis relance ce script."; read -r; exit 1; fi
     pgrep -x steam >/dev/null || { echo "Steam n'est pas lancé : lance-le puis relance ce script."; read -r; exit 1; }
     echo "Compilation (mod + bot)…"
-    dotnet build "$ROOT/src/LmdMulti" -c Release -nologo -v q | tail -1 || exit 1
+    dotnet build "$ROOT/src/Ovomium" -c Release -nologo -v q | tail -1 || exit 1
     dotnet build "$ROOT/tools/LmdBot" -c Release -nologo -v q | tail -1 || exit 1
-    [ -f "$CFG" ] && cp "$CFG" "$SESSION/LmdMulti.cfg.avant"
-    for dll in LmdMulti LmdExplorer; do [ -f "$GAME/Mods/$dll.dll" ] && cp "$GAME/Mods/$dll.dll" "$SESSION/$dll.dll.avant"; done
+    [ -f "$CFG" ] && cp "$CFG" "$SESSION/Ovomium.cfg.avant"
+    for dll in Ovomium LmdExplorer; do [ -f "$GAME/Mods/$dll.dll" ] && cp "$GAME/Mods/$dll.dll" "$SESSION/$dll.dll.avant"; done
     [ -f "$GAME/Mods/LmdExplorer.dll" ] && trash-put "$GAME/Mods/LmdExplorer.dll" # outil de dev : pas pour ce test
     # Mode test : rien de ce qui se passe pendant l'essai n'est enregistré (classements, succès, progression).
-    printf '[LmdMulti]\nTestMode = true\nShowPanel = true\n' > "$CFG"
-    cp "$ROOT/src/LmdMulti/bin/Release/net6.0/LmdMulti.dll" "$GAME/Mods/"
+    printf '[Ovomium]\nTestMode = true\nShowPanel = true\n' > "$CFG"
+    cp "$ROOT/src/Ovomium/bin/Release/net6.0/Ovomium.dll" "$GAME/Mods/"
     echo "Mod déployé (mode test)."
     dotnet "$BOT_DLL" --name "Bot-course" --port 47710 --race join --race-time 40 > "$SESSION/bot-course.log" 2>&1 &
     JOIN_PID=$!

@@ -1,4 +1,4 @@
-# Désinstalleur LmdMulti (lancé par « Desinstaller LmdMulti.bat »).
+# Désinstalleur Ovomium (lancé par « Desinstaller Ovomium.bat »).
 # Retire le mod, LMD-Camera (si c'est la copie livrée) et la règle de pare-feu ;
 # propose de retirer MelonLoader s'il n'y a pas d'autre mod.
 # Réglages (UserData) gardés. Mêmes paramètres de test que Install.ps1.
@@ -21,7 +21,7 @@ $script:Notes = @()
 function Uninstall-Firewall {
     if (-not (Test-IsWindows)) { Write-Journal 'Pare-feu : ignoré (pas Windows)'; return }
     $rules = @(Get-NetFirewallRule -Group $script:RuleGroup -ErrorAction SilentlyContinue)
-    if ($rules.Count -eq 0) { Write-Journal 'Pare-feu : aucune règle LmdMulti'; return }
+    if ($rules.Count -eq 0) { Write-Journal 'Pare-feu : aucune règle Ovomium'; return }
     Write-Host ''
     Write-Host '>>> Windows va demander une autorisation (pare-feu) : cliquez sur « Oui ». <<<' -ForegroundColor Yellow
     if (-not (Invoke-Elevated 'Remove' '' @())) {
@@ -51,7 +51,7 @@ function Invoke-Uninstall {
     if (-not $game) { Show-Message 'Désinstallation annulée : jeu introuvable.' 'Error'; return 22 }
     Write-Journal "Jeu : $($game.Dir)"
     if (-not (Wait-GameClosed)) { Show-Message 'Désinstallation annulée : le jeu est ouvert.' 'Warning'; return 23 }
-    $dll = Join-Path (Join-Path $game.Dir 'Mods') 'LmdMulti.dll'
+    $dll = Join-Path (Join-Path $game.Dir 'Mods') 'Ovomium.dll'
     if (Test-Path -LiteralPath $dll) { Remove-ToRecycleBin $dll } else { Write-Journal "Mod absent : $dll" }
     # Avant le test « autres mods » : notre copie de LMD-Camera ne doit pas retenir MelonLoader.
     $camera = Uninstall-CameraMod $game.Dir $script:Payload
@@ -60,16 +60,16 @@ function Invoke-Uninstall {
     $melon = Uninstall-MelonIfUnused $game.Dir
     Write-Journal "MelonLoader : $melon"
     $userData = Join-Path $game.Dir 'UserData'
-    if (Test-Path -LiteralPath (Join-Path $userData 'LmdMulti.cfg')) {
-        $script:Notes += "• Vos réglages sont gardés dans $userData (LmdMulti.cfg). Supprimez-les si vous n'en voulez plus."
+    if (Test-Path -LiteralPath (Join-Path $userData 'Ovomium.cfg')) {
+        $script:Notes += "• Vos réglages sont gardés dans $userData (Ovomium.cfg). Supprimez-les si vous n'en voulez plus."
     }
-    $text = "LmdMulti est désinstallé.`n`nMelonLoader : $melon"
+    $text = "Ovomium est désinstallé.`n`nMelonLoader : $melon"
     if ($script:Notes.Count -gt 0) { $text += "`n`n" + ($script:Notes -join "`n`n") }
     Show-Message "$text`n`nJournal : $($script:LogPath)" 'Info'
     return 0
 }
 
-if (-not $LogFile) { $LogFile = Get-DefaultLogFile 'LmdMulti-desinstallation.log' }
+if (-not $LogFile) { $LogFile = Get-DefaultLogFile 'Ovomium-desinstallation.log' }
 Initialize-Session $LogFile $Answers
 $ErrorActionPreference = 'Stop'
 try {

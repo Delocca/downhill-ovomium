@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LmdMulti.Core;
-using LmdMulti.Core.Poses;
+using Ovomium.Core;
+using Ovomium.Core.Poses;
 
 namespace LmdBot;
 

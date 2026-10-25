@@ -1,5 +1,5 @@
 #!/bin/bash
-# Paquet de distribution : dist/LmdMulti-<version>.zip (installeur Windows, Linux, mod, MelonLoader, LMD-Camera).
+# Paquet de distribution : dist/downhill-ovomium-<version>.zip (installeur Windows, Linux, mod, MelonLoader, LMD-Camera).
 #   tools/make-dist.sh            compile le mod (Release) puis emballe
 #   tools/make-dist.sh --no-build emballe la DLL déjà compilée
 # Besoins : refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip et vendor/LMD-Camera-1.1.0/LMD-Camera.dll
@@ -22,10 +22,10 @@ CAMERA_SHA256=59ca8f0b191b056f5f4d871a18612a9e8f822303a877cde67df9189c8493b52b
 # L'installeur prévient si le jeu installé a un autre build.
 TESTED_BUILD=12535418
 
-MOD_VERSION=$(sed -n 's/.*const string Version = "\([^"]*\)".*/\1/p' "$ROOT/src/LmdMulti/LmdMultiMod.cs")
+MOD_VERSION=$(sed -n 's/.*const string Version = "\([^"]*\)".*/\1/p' "$ROOT/src/Ovomium/OvomiumMod.cs")
 [[ -n "$MOD_VERSION" ]] || { echo "version du mod introuvable" >&2; exit 1; }
-NAME="LmdMulti-$MOD_VERSION"
-DLL="$ROOT/src/LmdMulti/bin/Release/net6.0/LmdMulti.dll"
+NAME="downhill-ovomium-$MOD_VERSION"
+DLL="$ROOT/src/Ovomium/bin/Release/net6.0/Ovomium.dll"
 
 fetch_pinned() { # fichier url sha256 : télécharge si absent, puis vérifie l'empreinte épinglée
     if [[ ! -f "$1" ]]; then
@@ -39,7 +39,7 @@ fetch_pinned() { # fichier url sha256 : télécharge si absent, puis vérifie l'
 
 build_mod() {
     [[ "${1:-}" == --no-build ]] && return
-    dotnet build "$ROOT/src/LmdMulti" -c Release -nologo -v quiet
+    dotnet build "$ROOT/src/Ovomium" -c Release -nologo -v quiet
 }
 
 # Texte pour Windows : fins de ligne CRLF, BOM UTF-8 si demandé (PowerShell 5.1 lit sinon en ANSI).
@@ -53,13 +53,13 @@ to_windows() { # source destination [bom]
 stage() { # dossier de travail → arborescence du zip
     local out="$1/$NAME" src="$ROOT/installer"
     mkdir -p "$out/fichiers/scripts" "$out/fichiers/melonloader"
-    to_windows "$src/Installer LmdMulti.bat" "$out/Installer LmdMulti.bat"
-    to_windows "$src/Desinstaller LmdMulti.bat" "$out/Desinstaller LmdMulti.bat"
+    to_windows "$src/Installer Ovomium.bat" "$out/Installer Ovomium.bat"
+    to_windows "$src/Desinstaller Ovomium.bat" "$out/Desinstaller Ovomium.bat"
     to_windows "$src/LISEZ-MOI.txt" "$out/LISEZ-MOI.txt" bom
     local ps
     for ps in "$src"/scripts/*.ps1; do to_windows "$ps" "$out/fichiers/scripts/$(basename "$ps")" bom; done
     install -m 755 "$src/install-linux.sh" "$out/install-linux.sh"
-    cp "$DLL" "$out/fichiers/LmdMulti.dll"
+    cp "$DLL" "$out/fichiers/Ovomium.dll"
     unzip -q "$MELON_ZIP" -d "$out/fichiers/melonloader"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/LICENSE.md" "$out/fichiers/MelonLoader-LICENSE.md"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/NOTICE.txt" "$out/fichiers/MelonLoader-NOTICE.txt"

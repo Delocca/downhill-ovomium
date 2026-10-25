@@ -1,4 +1,4 @@
-# Installeur LmdMulti (lancé par « Installer LmdMulti.bat »).
+# Installeur Ovomium (lancé par « Installer Ovomium.bat »).
 # Trouve le jeu, installe MelonLoader si besoin, copie le mod (et LMD-Camera), ouvre le pare-feu (UAC), journalise.
 # Paramètres de test : -SteamRoot / -GameDir (pas de registre), -Answers "Clé=Oui,Clé2=Non" (sans fenêtres).
 # Code de sortie : 0 réussi ; 21-24 annulé (expliqué à l'écran) ; 9 erreur ; 1 = PowerShell n'a pas pu lancer le script.
@@ -23,10 +23,10 @@ $script:Notes = @()
 function Install-ModDll([string]$Dir) {
     $mods = Join-Path $Dir 'Mods'
     if (-not (Test-Path -LiteralPath $mods)) { [void](New-Item -ItemType Directory -Path $mods) }
-    $target = Join-Path $mods 'LmdMulti.dll'
-    Copy-Item -LiteralPath (Join-Path $script:Payload 'LmdMulti.dll') -Destination $target -Force
+    $target = Join-Path $mods 'Ovomium.dll'
+    Copy-Item -LiteralPath (Join-Path $script:Payload 'Ovomium.dll') -Destination $target -Force
     Write-Journal "Mod copié : $target"
-    $cfg = Join-Path (Join-Path $Dir 'UserData') 'LmdMulti.cfg'
+    $cfg = Join-Path (Join-Path $Dir 'UserData') 'Ovomium.cfg'
     if (Test-Path -LiteralPath $cfg) { Write-Journal "Réglages existants gardés : $cfg" }
 }
 
@@ -35,7 +35,7 @@ function Test-GameVersion([string]$BuildId) {
     Write-Journal "Version du jeu : build Steam $BuildId (testé : $($script:TestedBuildId))"
     if ($BuildId -ne $script:TestedBuildId) {
         $script:Notes += "• Le jeu a été mis à jour depuis la sortie de ce mod : s'il ne marche plus, " +
-            'demandez une nouvelle version de LmdMulti.'
+            'demandez une nouvelle version d''Ovomium.'
     }
 }
 
@@ -56,7 +56,7 @@ function Install-Firewall([string]$GameExe) {
     if (-not (Test-IsWindows)) { Write-Journal 'Pare-feu : ignoré (pas Windows)'; return }
     $private = @(Read-MakePrivate)
     if ($private.Count -eq 0 -and (Test-FirewallReady $GameExe)) {
-        Write-Journal 'Pare-feu : règle LmdMulti déjà en place'
+        Write-Journal 'Pare-feu : règle Ovomium déjà en place'
         return
     }
     Write-Host ''
@@ -69,7 +69,7 @@ function Install-Firewall([string]$GameExe) {
 
 function Get-MelonNote([string]$Status) {
     switch ($Status) {
-        'gardé' { return "• Vous avez gardé votre MelonLoader : LmdMulti est prévu pour la version fournie." }
+        'gardé' { return "• Vous avez gardé votre MelonLoader : Ovomium est prévu pour la version fournie." }
         'à jour' { return '' }
         default { return "• Premier lancement LONG (2 à 10 minutes) : MelonLoader prépare le jeu dans une " +
             "fenêtre noire. C'est normal, ne fermez rien ; le jeu s'ouvre ensuite." }
@@ -79,7 +79,7 @@ function Get-MelonNote([string]$Status) {
 function Show-Success([string]$Dir, [string]$MelonStatus) {
     $note = Get-MelonNote $MelonStatus
     if ($note) { $script:Notes = @($note) + $script:Notes }
-    $text = "LmdMulti $($script:ModVersion) est installé !`n`nDossier du jeu : $Dir`nMelonLoader : $MelonStatus`n`n" +
+    $text = "Ovomium $($script:ModVersion) est installé !`n`nDossier du jeu : $Dir`nMelonLoader : $MelonStatus`n`n" +
         "Lancez le jeu depuis Steam, comme d'habitude.`n"
     if ($script:Notes.Count -gt 0) { $text += "`n" + ($script:Notes -join "`n`n") + "`n" }
     $text += "`nEn jeu : F8 = joueurs connectés, F6 = lancer / rejoindre une course " +
@@ -88,7 +88,7 @@ function Show-Success([string]$Dir, [string]$MelonStatus) {
 }
 
 function Invoke-Install {
-    $files = @('LmdMulti.dll', $script:CameraName) | ForEach-Object { Join-Path $script:Payload $_ }
+    $files = @('Ovomium.dll', $script:CameraName) | ForEach-Object { Join-Path $script:Payload $_ }
     if (@($files | Where-Object { -not (Test-Path -LiteralPath $_) }).Count -gt 0) {
         Show-Message "Fichiers de l'installeur incomplets : extrayez tout le zip puis relancez." 'Error'
         return 21
@@ -111,7 +111,7 @@ function Invoke-Install {
     return 0
 }
 
-if (-not $LogFile) { $LogFile = Get-DefaultLogFile 'LmdMulti-installation.log' }
+if (-not $LogFile) { $LogFile = Get-DefaultLogFile 'Ovomium-installation.log' }
 Initialize-Session $LogFile $Answers
 $ErrorActionPreference = 'Stop'
 try {
@@ -119,7 +119,7 @@ try {
 } catch {
     Write-Journal "ERREUR : $($_.Exception.Message)`n$($_.ScriptStackTrace)"
     Show-Message ("L'installation a échoué :`n$($_.Exception.Message)`n`n" +
-        "Si le message parle d'accès refusé : clic droit sur « Installer LmdMulti.bat » → " +
+        "Si le message parle d'accès refusé : clic droit sur « Installer Ovomium.bat » → " +
         "« Exécuter en tant qu'administrateur ».`n`n" +
         "Sinon, envoyez le journal à la personne qui vous a donné le mod :`n$($script:LogPath)") 'Error'
     $code = 9

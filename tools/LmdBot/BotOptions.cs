@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using LmdMulti.Core.Net;
-using LmdMulti.Core.Poses;
+using Ovomium.Core.Net;
+using Ovomium.Core.Poses;
 
 namespace LmdBot;
 
 /// Options de la ligne de commande.
 internal sealed class BotOptions
 {
-    public const string Usage = @"LmdBot : faux joueur LmdMulti pour tester le mod sans second PC.
+    public const string Usage = @"LmdBot : faux joueur Ovomium pour tester le mod sans second PC.
   --port N          port d'écoute (défaut 47710 ; le jeu garde 47700)
   --target-port N   port des joueurs visé par les annonces (défaut 47700)
   --peer IP[:port]  joueur à contacter directement (répétable ; 127.0.0.1:47700 est toujours contacté)
@@ -107,7 +107,7 @@ Course :
     {
         if (replay != "latest") return replay;
         string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".local/share/Steam/steamapps/common/Lonely Mountains - Downhill/UserData/LmdMulti/recordings");
+            ".local/share/Steam/steamapps/common/Lonely Mountains - Downhill/UserData/Ovomium/recordings");
         var files = Directory.Exists(dir) ? new DirectoryInfo(dir).GetFiles("*.lmdrec").OrderByDescending(f => f.LastWriteTimeUtc) : Enumerable.Empty<FileInfo>();
         foreach (var f in files)
         {

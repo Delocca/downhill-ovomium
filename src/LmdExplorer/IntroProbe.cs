@@ -10,7 +10,7 @@ namespace LmdExplorer;
 
 /// Sonde du démarrage (fichier drapeau « introprobe ») : journalise les appels des méthodes des écrans
 /// de démarrage (logos, profil, écran titre) et les réglages de durée lus sur les objets, pour savoir
-/// quoi raccourcir (src/LmdMulti/Tweaks/IntroSkip.cs). Ne modifie rien.
+/// quoi raccourcir (src/Ovomium/Tweaks/IntroSkip.cs). Ne modifie rien.
 internal static class IntroProbe
 {
     private static readonly Dictionary<string, int> Calls = new();

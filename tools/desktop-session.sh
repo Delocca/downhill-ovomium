@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session de validation LmdMulti sur le vrai bureau d'Edia.
+# Session de validation Ovomium sur le vrai bureau d'Edia.
 # Lancement (depuis Claude Code) :  ! gnome-terminal -- bash tools/desktop-session.sh
 # Déploie le mod en mode écho + debug, démarre un bot, lance LMD via Steam, guide la session,
 # puis remet tout en place (mod retiré, config restaurée). Journal : /tmp/lmd-session/session.log
@@ -10,8 +10,8 @@ exec > >(tee -a "$SESSION/session.log") 2>&1
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GAME="$HOME/.local/share/Steam/steamapps/common/Lonely Mountains - Downhill"
-CFG="$GAME/UserData/LmdMulti.cfg"
-DATA="$GAME/UserData/LmdMulti"
+CFG="$GAME/UserData/Ovomium.cfg"
+DATA="$GAME/UserData/Ovomium"
 BOT_DLL="$ROOT/tools/LmdBot/bin/Release/net8.0/LmdBot.dll"
 ORBIT_PID="" REPLAY_PID=""
 
@@ -21,8 +21,8 @@ mark() { echo "[$(date +%H:%M:%S)] REPÈRE : $*"; }  # repères horodatés pour 
 cleanup() {
     say "Nettoyage"
     for pid in $ORBIT_PID $REPLAY_PID; do kill "$pid" 2>/dev/null; done
-    [ -f "$GAME/Mods/LmdMulti.dll" ] && trash-put "$GAME/Mods/LmdMulti.dll" && echo "mod retiré de Mods/"
-    if [ -f "$SESSION/LmdMulti.cfg.avant" ]; then cp "$SESSION/LmdMulti.cfg.avant" "$CFG"; echo "config d'avant restaurée"
+    [ -f "$GAME/Mods/Ovomium.dll" ] && trash-put "$GAME/Mods/Ovomium.dll" && echo "mod retiré de Mods/"
+    if [ -f "$SESSION/Ovomium.cfg.avant" ]; then cp "$SESSION/Ovomium.cfg.avant" "$CFG"; echo "config d'avant restaurée"
     elif [ -f "$CFG" ]; then trash-put "$CFG"; echo "config de session retirée"; fi
     cp "$GAME/MelonLoader/Latest.log" "$SESSION/MelonLoader-Latest.log" 2>/dev/null
     ls "$DATA/recordings" 2>/dev/null > "$SESSION/enregistrements.txt"
@@ -34,12 +34,12 @@ prepare() {
     if pgrep -f "[L]MD_Win_x64.exe" >/dev/null; then echo "Le jeu tourne déjà : ferme-le puis relance ce script."; read -r; exit 1; fi
     pgrep -x steam >/dev/null || pgrep -f "[s]team.sh" >/dev/null || { echo "Steam n'est pas lancé : lance-le puis relance ce script."; read -r; exit 1; }
     echo "Compilation (mod + bot, mode Release)…"
-    dotnet build "$ROOT/src/LmdMulti" -c Release -nologo -v q | tail -1 || exit 1
+    dotnet build "$ROOT/src/Ovomium" -c Release -nologo -v q | tail -1 || exit 1
     dotnet build "$ROOT/tools/LmdBot" -c Release -nologo -v q | tail -1 || exit 1
-    [ -f "$CFG" ] && cp "$CFG" "$SESSION/LmdMulti.cfg.avant"
+    [ -f "$CFG" ] && cp "$CFG" "$SESSION/Ovomium.cfg.avant"
     # Config de session : écho, journal détaillé, enregistrement des poses (le mod complète le reste).
-    printf '[LmdMulti]\nEchoMode = true\nEchoDelaySeconds = 2.0\nDebugLog = true\nRecordPoses = true\nShowPanel = true\n' > "$CFG"
-    cp "$ROOT/src/LmdMulti/bin/Release/net6.0/LmdMulti.dll" "$GAME/Mods/"
+    printf '[Ovomium]\nEchoMode = true\nEchoDelaySeconds = 2.0\nDebugLog = true\nRecordPoses = true\nShowPanel = true\n' > "$CFG"
+    cp "$ROOT/src/Ovomium/bin/Release/net6.0/Ovomium.dll" "$GAME/Mods/"
     [ -f "$GAME/Mods/LmdExplorer.dll" ] && echo "⚠ LmdExplorer.dll est aussi dans Mods/ (laissé tel quel)."
     echo "Mod déployé, config de session écrite."
 }
@@ -72,7 +72,7 @@ guide() {
   │ F10 dans le jeu = capture d'écran du jeu (à chaque étape ✔).        │
   │ F8 = panneau des joueurs · F9 = écho on/off · F7 = aspect fantômes. │
   └─────────────────────────────────────────────────────────────────────┘
-  1. MENU : en haut à droite, le panneau « LmdMulti 0.1.0 · écoute sur le
+  1. MENU : en haut à droite, le panneau « Ovomium 0.1.0 · écoute sur le
      port 47700 · écho ». Bot-orbite y est listé (menu, ping en ms) et un
      message « Bot-orbite a rejoint » s'affiche au centre.            ✔ F10
   2. Lance une piste. Au départ, deux fantômes semi-transparents :

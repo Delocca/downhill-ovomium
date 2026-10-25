@@ -41,7 +41,7 @@ def create():
     for code, (lo, hi) in AXES.items():
         fcntl.ioctl(fd, UI_SET_ABSBIT, code)
         absmin[code], absmax[code] = lo, hi
-    name = b"Microsoft X-Box 360 pad (LmdMulti test)".ljust(80, b"\0")
+    name = b"Microsoft X-Box 360 pad (Ovomium test)".ljust(80, b"\0")
     dev = name + struct.pack("<HHHHI", 0x03, 0x045E, 0x028E, 0x0114, 0)
     dev += struct.pack("<64i", *absmax) + struct.pack("<64i", *absmin) + struct.pack("<128i", *([0] * 128))
     os.write(fd, dev)

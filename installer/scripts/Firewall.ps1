@@ -1,8 +1,8 @@
 # Pare-feu Windows : règle entrante UDP pour le jeu, profil réseau (Public bloque les autres joueurs).
 # Lecture sans droits d'administrateur ; modifications dans Elevated.ps1, lancé via l'UAC.
 
-$script:RuleGroup = 'LmdMulti'
-$script:RuleName = 'LmdMulti - Lonely Mountains: Downhill (UDP entrant)'
+$script:RuleGroup = 'Ovomium'
+$script:RuleName = 'Ovomium - Lonely Mountains: Downhill (UDP entrant)'
 
 function Test-IsAdmin {
     if (-not (Test-IsWindows)) { return $false }
@@ -64,14 +64,14 @@ function Add-GameRule([string]$GameExe) {
     }
     [void](New-NetFirewallRule -DisplayName $script:RuleName -Group $script:RuleGroup `
         -Direction Inbound -Action Allow -Program $GameExe -Protocol UDP -Profile Private, Domain `
-        -Description 'Mod LmdMulti : voir les autres joueurs du réseau local (port 47700 et suivants).')
+        -Description 'Mod Ovomium : voir les autres joueurs du réseau local (port 47700 et suivants).')
     Write-Journal "  règle ajoutée : $($script:RuleName) -> $GameExe"
 }
 
 function Remove-GameRule {
     $rules = @(Get-NetFirewallRule -Group $script:RuleGroup -ErrorAction SilentlyContinue)
     $rules | Remove-NetFirewallRule
-    Write-Journal "  $($rules.Count) règle(s) LmdMulti retirée(s)"
+    Write-Journal "  $($rules.Count) règle(s) Ovomium retirée(s)"
 }
 
 # Échec non bloquant (certaines cartes virtuelles refusent) : la règle est déjà en place.
