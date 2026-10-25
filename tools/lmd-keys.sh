@@ -20,15 +20,19 @@ win() { xdotool search --onlyvisible --name "^Lonely Mountains: Downhill$" 2>/de
 focus() { local w; w=$(win); [ -n "$w" ] && xdotool windowfocus "$w" 2>/dev/null; xdotool mousemove 1023 767; }
 keys() { focus; for k in "$@"; do xdotool key "$k"; sleep 0.4; done; }
 
-# Écran titre > Commencer la partie > montagne > piste > défi > vélo : six fois Entrée.
+# Écran titre > Commencer la partie > montagne > piste > défi > vélo : six fois Entrée (cinq si LmdMulti
+# a passé l'écran titre au lancement, réglage SkipIntro).
 enter() {
+    local presses=6
     if [ -z "$(win)" ]; then
         "$HERE/lmd-virtual.sh" start
         local t=0; until [ -n "$(win)" ]; do sleep 2; t=$((t+1)); [ $t -gt 60 ] && { echo "pas de fenêtre"; return 1; }; done
-        sleep 28 # écran titre : les menus ne répondent pas tout de suite
+        # SkipIntro : attendre que le mod ait passé l'écran titre ; sinon l'écran titre met ~28 s à répondre
+        t=0; until grep -aq "intro : écran titre passé" "$LOG"; do sleep 1; t=$((t+1)); [ $t -gt 40 ] && break; done
+        if grep -aq "intro : écran titre passé" "$LOG"; then presses=5; sleep 4; else sleep 2; fi
     fi
     local before; before=$(grep -ac "piste locale : [A-Z]" "$LOG")
-    for _ in 1 2 3 4 5 6; do keys Return; sleep 2.6; done
+    for _ in $(seq "$presses"); do keys Return; sleep 2.6; done
     local t=0; until [ "$(grep -ac "piste locale : [A-Z]" "$LOG")" -gt "$before" ]; do
         sleep 2; t=$((t+1)); [ $t -gt 30 ] && { echo "pas entré en piste (capture : /tmp/lmd-enter-echec.png)"; shot /tmp/lmd-enter-echec.png; return 1; }
     done

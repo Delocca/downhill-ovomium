@@ -16,6 +16,8 @@ internal sealed class PlayersPanel
 {
     private const int MaxHere = 8, MaxMenu = 12;
     public bool Visible = true;
+    /// Commandes ajoutées à la ligne d'aide (ex. « · V vue » si LMD-Camera est là).
+    public string ExtraHint = "";
     private readonly List<string> _lines = new();
     private double _nextRefresh;
     private float _width = -1;
@@ -41,7 +43,7 @@ internal sealed class PlayersPanel
         if (_onTrack) AddTrackLines(ok, myTrack, isGhostVisible);
         else AddMenuLines(ok);
         if (peers.Count == 0) _lines.Add(Grey("aucun autre joueur détecté"));
-        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Race.RaceKeys.Go} course ·{Config.PanelKey.Value} panneau · {Config.StyleKey.Value} aspect · {Config.EchoKey.Value} écho · {Config.CaptureKey.Value} capture")}</size>");
+        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Race.RaceKeys.Go} course · {Config.PanelKey.Value} panneau · {Config.StyleKey.Value} aspect · {Config.EchoKey.Value} écho · {Config.CaptureKey.Value} capture{ExtraHint}")}</size>");
     }
 
     private void AddTrackLines(List<PeerInfo> peers, string myTrack, System.Func<ulong, bool> isGhostVisible)

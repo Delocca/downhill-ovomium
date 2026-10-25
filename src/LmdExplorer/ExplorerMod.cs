@@ -19,6 +19,7 @@ public class ExplorerMod : MelonMod
     public override void OnInitializeMelon()
     {
         Out.Init(LoggerInstance);
+        IntroProbe.Install(HarmonyInstance);
         Out.Info($"prêt. Commandes : une par ligne dans {Out.Dir}\\cmd.txt ou /tmp/lmdexplorer-cmd.txt (« help » pour la liste)");
     }
 
@@ -32,6 +33,7 @@ public class ExplorerMod : MelonMod
     public override void OnUpdate()
     {
         float now = (float)_clock.Elapsed.TotalSeconds; // horloge réelle, indépendante de Time.*
+        Out.Try("intro", IntroProbe.Poll);
         if (now >= _nextBeat)
         {
             _nextBeat = now + 10f;

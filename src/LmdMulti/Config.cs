@@ -25,6 +25,8 @@ internal static class Config
     public static MelonPreferences_Entry<bool> RecordPoses;
     public static MelonPreferences_Entry<bool> DebugLog;
     public static MelonPreferences_Entry<bool> TestMode;
+    public static MelonPreferences_Entry<bool> SkipIntro;
+    public static MelonPreferences_Entry<string> KeyboardLayout, CameraKey;
 
     public static void Init()
     {
@@ -41,6 +43,9 @@ internal static class Config
         EchoKey = c.CreateEntry("EchoKey", "F9", description: "Touche : activer/couper le mode écho");
         StyleKey = c.CreateEntry("StyleKey", "F7", description: "Touche : changer l'aspect des fantômes (GhostStyle)");
         CaptureKey = c.CreateEntry("CaptureKey", "F10", description: "Touche : capture d'écran dans UserData/LmdMulti/captures");
+        SkipIntro = c.CreateEntry("SkipIntro", true, description: "Démarrage rapide : passe les logos et l'écran « Appuyez sur… » pour arriver directement au menu");
+        KeyboardLayout = c.CreateEntry("KeyboardLayout", "auto", description: "Clavier : auto (lettres du jeu, ex. ZQSD pour diriger, adaptées à ta disposition : AZERTY, QWERTZ…), azerty, qwertz, ou qwerty (touches du jeu inchangées)");
+        CameraKey = c.CreateEntry("CameraKey", "V", description: "Touche : vue à la première personne ⇄ vue normale (mod LMD-Camera ; manette : clic du stick droit)");
         ShowPanel = c.CreateEntry("ShowPanel", true, description: "Panneau des joueurs visible au démarrage");
         EchoMode = c.CreateEntry("EchoMode", false, description: "Debug : affiche son propre fantôme, revenu par le réseau local avec un retard");
         EchoDelaySeconds = c.CreateEntry("EchoDelaySeconds", 2f, description: "Retard du fantôme écho (secondes)");

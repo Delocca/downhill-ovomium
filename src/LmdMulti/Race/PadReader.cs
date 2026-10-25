@@ -12,7 +12,7 @@ namespace LmdMulti.Race;
 internal sealed class PadReader
 {
     // Identifiants d'éléments Rewired des manettes Xbox 360 / One (XInput, ce que Proton présente).
-    public const int ButtonA = 6, ButtonB = 7, ButtonBack = 12;
+    public const int ButtonA = 6, ButtonB = 7, ButtonBack = 12, ButtonR3 = 15;
 
     private readonly List<ControllerMap> _muted = new();
     private readonly HashSet<string> _unmapped = new();
@@ -45,6 +45,18 @@ internal sealed class PadReader
         if (last != null) LastWasPad = last.type == ControllerType.Joystick;
         if (now >= _nextScan) { _nextScan = now + 1000; Scan(player, joys, count); }
         UpdateMute(player);
+    }
+
+    /// Bouton tenu sur l'une des manettes du joueur (hors commandes de course : ex. R3 pour la vue).
+    public static bool AnyButton(int elementId)
+    {
+        if (!ReInput.isReady) return false;
+        var player = ReInput.players.GetPlayer(0);
+        if (player == null) return false;
+        var joys = player.controllers.Joysticks;
+        for (int i = 0; i < player.controllers.joystickCount; i++)
+            if (Pressed(joys[i], elementId)) return true;
+        return false;
     }
 
     private static bool Pressed(Joystick j, int elementId)

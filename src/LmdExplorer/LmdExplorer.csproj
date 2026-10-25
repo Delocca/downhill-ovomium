@@ -29,8 +29,10 @@
     <Reference Include="$(RefsDir)UnityEngine.PhysicsModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.AnimationModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppRewired_Core.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.TextRenderingModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.UIModule.dll" Private="false" />
     <Reference Include="$(RefsDir)Unity.TextMeshPro.dll" Private="false" />
   </ItemGroup>
 </Project>

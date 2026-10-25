@@ -17,7 +17,7 @@ namespace LmdMulti;
 /// Tout ce qui touche à Unity tourne ici, dans le fil principal ; le réseau a son propre fil.
 public class LmdMultiMod : MelonMod
 {
-    public const string Version = "0.2.0";
+    public const string Version = "0.3.0";
 
     private UdpNode _node;
     private RaceController _race;
@@ -27,6 +27,8 @@ public class LmdMultiMod : MelonMod
     private readonly PlayersPanel _panel = new();
     private readonly Toasts _toasts = new();
     private readonly SessionTools _tools = new();
+    private readonly View.CameraToggle _camera = new();
+    private readonly Tweaks.KeyboardRemap _keyboard = new();
     private string _myName = "?", _myTrack;
     private double _nextLocalRefresh;
     private readonly System.Diagnostics.Stopwatch _cost = new(); // temps passé dans le mod (DebugLog)
@@ -54,11 +56,14 @@ public class LmdMultiMod : MelonMod
         if (_node == null) return;
         _tools.Frame(_cost.Elapsed.TotalMilliseconds); // coût de l'image précédente (Update + tous les OnGUI)
         _cost.Restart();
+        Log.Try("intro", Tweaks.IntroSkip.Update);
         double now = NetClock.NowMs;
         Log.Try("état local", () => RefreshLocal(now));
         Log.Try("événements réseau", DrainEvents);
         Log.Try("touches", HandleKeys);
         Log.Try("touches de course", () => _race.HandleKeys(now, _myName));
+        Log.Try("vue", () => _camera.Update(_myTrack != null, _toasts));
+        Log.Try("clavier", () => _keyboard.Update(now));
         Log.Try("course", () => _race.Update(now)); // séparés : une touche en erreur ne fige pas la course
         // Capture et application dans Update : les contraintes Unity (cheveux, phares) suivent dans la même image.
         Log.Try("envoi pose", () => _sender.Tick(_node, _myTrack, now, _tools.PositionMask));
@@ -67,6 +72,7 @@ public class LmdMultiMod : MelonMod
         {
             _tools.Survey(_sender.LastFrame);
             _tools.Tick(_node, _ghosts.VisibleCount, _ghosts.TotalHolds(), _myTrack, _ghosts.Describe);
+            _panel.ExtraHint = _camera.Hint;
             _panel.Refresh(_node, _myName, _myTrack, _ghosts.IsVisible);
         });
         _cost.Stop();

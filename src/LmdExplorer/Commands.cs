@@ -58,6 +58,7 @@ internal static class Commands
         ["online"] = id => OnlineScores.Read(id),                                                           // online RO_01_A4 (lecture seule)
 
         ["call"] = spec => Invoker.Call(spec),
+        ["maps"] = _ => InputMaps.Dump(),                                                                   // cartes Rewired -> maps.txt
         ["refs"] = type => RefProbe.Run(type),                                                              // refs [Type] : références périmées ?
         ["res"] = SetResolution,                                                                            // res 1920 1080 : fenêtre (session seulement)
     };

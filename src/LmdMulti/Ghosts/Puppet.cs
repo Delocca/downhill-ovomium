@@ -62,10 +62,21 @@ internal sealed class Puppet
             smr.updateWhenOffscreen = true; // crash : le rider s'éloigne du vélo, les bornes doivent suivre
         }
         var mesh = go.transform.Find("bike/mergedMesh");
-        if (mesh != null) mesh.gameObject.SetActive(true);
+        if (mesh != null)
+        {
+            // Masqué chez nous en vue 1re personne (LMD-Camera, FP_HideBike) avec les cheveux : le fantôme les garde.
+            if (!mesh.gameObject.activeSelf) ShowHair(go);
+            mesh.gameObject.SetActive(true);
+        }
         var rig = BoneRig.Find(go.transform);
         if (rig == null) { Object.Destroy(go); return null; }
         return new Puppet(go, rig) { _materials = GhostLook.Apply(go, color, style) };
+    }
+
+    private static void ShowHair(GameObject go)
+    {
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+            if (t.name.Contains("rider_hair") || t.name.Contains("rider_facialhair")) t.gameObject.SetActive(true);
     }
 
     /// Retire tout ce qui simule ou réagit : joints, scripts, colliders, rigidbodies ; coupe l'Animator.

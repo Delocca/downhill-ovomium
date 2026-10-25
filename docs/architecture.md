@@ -1,4 +1,4 @@
-# Architecture de LmdMulti (v0.2 : fantômes réseau et mode course)
+# Architecture de LmdMulti (v0.3 : fantômes réseau, mode course, démarrage rapide, AZERTY, vue 1re personne)
 
 Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son propre vélo ; les autres apparaissent comme des marionnettes sans collision, avec leur pseudo au-dessus. N'importe qui peut lancer une course (F6, ou Select + A à la manette) : les autres reçoivent une invitation, la piste se charge toute seule chez ceux qui acceptent, départ commun après un compte à rebours, classement en direct et tableau final (voir « Mode course »).
 
@@ -16,6 +16,8 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 | `src/LmdMulti/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
 | `src/LmdMulti/Race/` | Course côté jeu : `RaceController` (session, commandes, réseau), `PadReader` (manette via Rewired), `RaceKeys` (noms des commandes à l'écran), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/LmdMulti/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications |
+| `src/LmdMulti/Tweaks/` | Confort hors multijoueur : `IntroSkip` (démarrage direct au menu, `SkipIntro`), `KeyLayout` + `KeyboardRemap` (touches lettres du jeu adaptées à la disposition du clavier, `KeyboardLayout`) |
+| `src/LmdMulti/View/` | Vue à la première personne : `LmdCameraBridge` (pont par réflexion vers le mod LMD-Camera de flo-st, livré à côté), `CameraToggle` (bascule touche `CameraKey` / R3) |
 | `src/LmdMulti/Diagnostics/` | Capture d'écran (F10), statistiques (réseau, images/s, coût du mod), relevé des os en mode `DebugLog`, `TestMode` (aucun résultat enregistré par le jeu pendant les tests) |
 | `tools/LmdBot/` | Faux joueur(s) en console (Linux) : orbite autour du joueur ou rejeu d'un .lmdrec, jusqu'à 64 dans un processus ; pair de course simulé (`RaceBot`) |
 | `tools/lmd-virtual.sh`, `tools/lmd-keys.sh` | Jeu sur écran virtuel (`:98`) et pilotage au clavier : entrer en piste, rouler en filmant, captures |
@@ -23,7 +25,7 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 | `src/LmdExplorer/` | Outil de dev séparé (exploration de l'API du jeu), pas livré aux joueurs |
 | `installer/` | Installeur Windows (`.bat` + scripts PowerShell), désinstalleur, `LISEZ-MOI.txt`, `install-linux.sh` ; emballés par `tools/make-dist.sh` dans `dist/LmdMulti-<version>.zip`, testés par `tests/installer/run-tests.sh`. Voir `docs/distribution.md` |
 
-Le mod compile les sources du cœur directement (fichiers liés dans `LmdMulti.csproj`) : **une seule DLL**, `LmdMulti.dll`, à copier dans `<jeu>/Mods/`. Aucune dépendance externe : UDP maison, avec une petite couche fiable (`ReliableChannel`) pour les rares messages de course ; les poses, envoyées en continu, n'en ont pas besoin.
+Le mod compile les sources du cœur directement (fichiers liés dans `LmdMulti.csproj`) : **une seule DLL**, `LmdMulti.dll`, à copier dans `<jeu>/Mods/` (le paquet y ajoute `LMD-Camera.dll`, mod tiers facultatif : voir « Démarrage, clavier, vue »). Aucune dépendance externe : UDP maison, avec une petite couche fiable (`ReliableChannel`) pour les rares messages de course ; les poses, envoyées en continu, n'en ont pas besoin.
 
 ## Flux
 
@@ -110,6 +112,14 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
 
 **Choix écartés** : départ par « dans N ms » (faussé par les renvois de messages), horloge commune par NTP (inutile : le ping existant suffit), chrono et arrivée lus dans les champs du tracker du jeu (ils gardent la manche précédente tant que le joueur n'a pas démarré : fausse arrivée observée), « prêt » sur la fin de l'intro (le jeu ne libère le vélo qu'au premier appui du joueur).
 
+## Démarrage, clavier, vue
+
+**Démarrage rapide** (`Tweaks/IntroSkip`, `SkipIntro` vrai par défaut ; séquence relevée dans `game-api.md` § 10). Prefix sur la mise en place de l'écran de logos (`SplashScreen`) : délais et durées à zéro, logos masqués. Puis, à l'écran titre (`MainMenuScreen`), une fois par lancement : le mod attend la fin de son animation d'arrivée (`prop_Boolean_0` faux, 2 s au plus) et fait comme un appui (drapeau « attend un appui » baissé, `Method_Private_Void_2`, `ShowButtonList`) : boutons affichés, premier appui = « Commencer la partie ». Chargement du profil et connexion au serveur de classement inchangés. Pas de logo Unity dans cette build ; les ~8 s d'écran noir du début (Proton, MelonLoader) sont avant tout code de mod. Mesuré sur écran virtuel (2026-10-25, depuis le lancement de Proton) : écran titre à ~27 s puis appui nécessaire → menu à ~17 s, sans appui (logos ~10,7 s supprimés). Reste : « Connecté » affiché 1,5 s par le jeu, chargement des scènes du menu (~2 s).
+
+**Clavier** (`Tweaks/KeyLayout`, `Tweaks/KeyboardRemap`, `KeyboardLayout` = `auto` par défaut). Rewired lit les touches par leur lettre (code de touche virtuel), pas leur position : en AZERTY, « accélérer » (W) est en bas à gauche [vérifié sous Proton avec `setxkbmap fr` : Z inopérant, W fait rouler]. En `auto`, pour chaque position de lettre QWERTY (scancode), `MapVirtualKeyExW` donne la lettre de la disposition active ; les cartes clavier Rewired du joueur (toutes catégories) sont refaites en mémoire avec ces lettres (suppression puis recréation des éléments déplacés ; A et Q s'échangent). Les cartes rechargées par le jeu sont reprises (scan chaque seconde, cartes déjà faites gardées référencées). Sous Wine, `GetKeyboardLayout` renvoie 0x04090409 même en AZERTY, mais `MapVirtualKeyExW` suit la disposition X : seule la seconde fait foi. Disposition lue une fois par lancement. Vérifié : AZERTY détecté, ZQSD roule et dirige, W inopérant ; QWERTY : rien de modifié. Non vérifié sur un vrai Windows (même mécanisme attendu : codes virtuels). Touches des mods (F6-F10, V, 1/2/3 de LMD-Camera) : `Input.GetKeyDown` d'Unity ; chiffres reconnus en AZERTY sans Maj [vérifié].
+
+**Vue à la première personne** : mod tiers **LMD-Camera 1.1.0** (flo-st, MIT, `docs/distribution.md`), livré tel quel. Comparé (2026-10-25) : DevdudeX/LMD-Alternative-Camera-Mod et son fork faehrmaniac (photo, 3e personne, manette) sans licence (= tous droits réservés, redistribution interdite), et cassé sur MelonLoader ≥ 0.6.2 selon son auteur ; LMD-Camera (MIT, 1re/3e personne, clavier seulement) marche tel quel avec MelonLoader 0.7.3. Il désactive `PlayCamera` et place la caméra sur l'os `head_tip_BindJNT` du vélo local (bras et roue avant visibles, tête coupée par le plan proche) ; `FP_HideBike` cache tout `mergedMesh` (les marionnettes, copies du vélo local, le réactivent avec les cheveux). LmdMulti ajoute une bascule (`View/CameraToggle`) : `CameraKey` (V) ou R3 (libre en piste dans les cartes manette du jeu), 1re personne ⇄ vue précédente (normale ou 3e personne), refusée pendant une chute comme les touches du mod, mémorisée par LMD-Camera (`LastViewMode` de `UserData/LMD-Camera.cfg`). Le pont appelle des membres privés de LMD-Camera par réflexion : une autre version peut le désactiver (journalisé), ses touches 1/2/3 restant utilisables. Vérifié sur écran virtuel : pseudos bien placés en vue 1re personne (bot en orbite, écho), course avec un bot (compte à rebours, chrono, panneau), restart, chute (la caméra reste sur le vélo, le ragdoll est vu de là).
+
 ## Outils de test
 
 - **Mode écho** (`EchoMode`, touche F9) : nos poses repartent vers `127.0.0.1` et reviennent comme celles d'un pair « (écho) », affiché avec `EchoDelaySeconds` (2 s) de retard. Toute la chaîne capture → encodage → socket → décodage → interpolation → marionnette est exercée sans second PC.
@@ -128,7 +138,7 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
 
 ## Configuration
 
-Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 (appui et maintien ; `RaceQuitKey` n'existe plus) / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`, `TestMode` (tests seulement : le jeu n'enregistre aucun résultat, ni classements en ligne ou locaux, ni succès, stats, progression ; voir `game-api.md` § 5 « Arrivées de test » ; **obligatoire pour toute manche scriptée ou téléportée**).
+Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 (appui et maintien ; `RaceQuitKey` n'existe plus) / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `CameraKey` V (vue 1re personne), `SkipIntro` (démarrage direct au menu, vrai), `KeyboardLayout` (`auto`, `azerty`, `qwertz`, `qwerty`), `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`, `TestMode` (tests seulement : le jeu n'enregistre aucun résultat, ni classements en ligne ou locaux, ni succès, stats, progression ; voir `game-api.md` § 5 « Arrivées de test » ; **obligatoire pour toute manche scriptée ou téléportée**).
 
 ## Interface
 
@@ -155,6 +165,7 @@ Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même
 
 ## Limites connues
 
+- `CaptureKey` F10 est aussi l'action « Screenshot » des cartes clavier du jeu (relevé par la commande `maps`, 2026-10-25) : les deux réagissent. Non corrigé.
 - Les fantômes ont l'apparence (vélo, tenue) du joueur local : l'apparence de chacun n'est pas encore transmise (voir `game-api.md` § 3). Le style translucide le masque en partie.
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
 - Windows : l'installeur crée la règle de pare-feu (UAC) ; sans elle, au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés), question souvent cachée sous le jeu plein écran (`docs/distribution.md`).
