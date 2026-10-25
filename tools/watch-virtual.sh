@@ -14,7 +14,7 @@ watch_loop() {
         local size
         size=$(xdpyinfo -display "$DISP" | awk '/dimensions:/ {print $2}')
         DISPLAY="${DISPLAY:-:0}" ffplay -loglevel error -window_title "Écran virtuel $DISP (lecture seule)" \
-            -f x11grab -framerate 10 -video_size "$size" -i "$DISP" </dev/null >>"$LOG" 2>&1
+            -f x11grab -draw_mouse 0 -framerate 10 -video_size "$size" -i "$DISP" </dev/null >>"$LOG" 2>&1
         # ffplay fermé alors que l'écran tourne encore : c'est la personne qui a quitté
         sleep 1
         screen_up && break
@@ -22,12 +22,12 @@ watch_loop() {
     done
 }
 
-if pgrep -f "[w]atch-virtual.sh.*loop" >/dev/null; then
-    echo "Le visionnage tourne déjà."
-    exit 0
-fi
 if [ "${2:-}" = loop ]; then
     watch_loop
+    exit 0
+fi
+if pgrep -f "[w]atch-virtual.sh $DISP loop" >/dev/null; then
+    echo "Le visionnage tourne déjà."
     exit 0
 fi
 # Détaché (setsid) : lancé via « ! » dans Claude Code, un processus attaché peut se terminer aussitôt
