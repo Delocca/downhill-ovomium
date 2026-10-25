@@ -73,7 +73,7 @@ public sealed partial class UdpNode
     /// Notre pose revenue par la boucle locale : livrée comme celle d'un pair « écho ».
     private void HandleEchoPose(int len, double now)
     {
-        var local = Local();
+        var local = Local() ?? new Announce();
         var echo = new Announce { Name = local.Name + " (écho)", SteamId = local.SteamId, Track = local.Track, OnTrack = local.OnTrack, ModVersion = local.ModVersion };
         _peers.OnAnnounce(EchoId, echo, null, now, isEcho: true);
         _peers.Touch(EchoId, null, now, countPose: true);

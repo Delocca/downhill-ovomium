@@ -20,7 +20,7 @@ public sealed partial class UdpNode : IDisposable
     private readonly PacketWriter _w = new();
     private readonly byte[] _rx = new byte[2048];
     private readonly object _localLock = new();
-    private Announce _local = new();
+    private Announce _local; // null tant que SetLocal n'a pas été appelé : pas d'annonce sans pseudo
     private Socket _sock;
     private Thread _thread;
     private volatile bool _stop, _echo;
@@ -38,7 +38,6 @@ public sealed partial class UdpNode : IDisposable
     {
         _o = options;
         _peers = new PeerTable(_events);
-        _local.ModVersion = options.ModVersion;
     }
 
     /// Ouvre le socket (port souhaité, sinon les suivants) et démarre le fil. Faux si aucun port libre.
@@ -136,7 +135,9 @@ public sealed partial class UdpNode : IDisposable
     /// (un pair qui n'entend pas nos broadcasts, ex. port différent ou Tailscale, nous découvre ainsi).
     private void AnnounceAll()
     {
-        Messages.WriteAnnounce(_w, Id, Local());
+        var local = Local();
+        if (local == null) return;
+        Messages.WriteAnnounce(_w, Id, local);
         var sent = new HashSet<IPEndPoint>();
         void To(IPEndPoint ep) { if (sent.Add(ep)) Send(_w.Buffer, _w.Length, ep); }
         foreach (var b in _broadcasts) To(new IPEndPoint(b, _o.DiscoveryPort));

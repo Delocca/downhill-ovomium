@@ -47,8 +47,11 @@ public static class Skeleton
 
     /// Os dont on envoie aussi la position locale (ceux qui translatent : suspensions, centre du rider…).
     /// Masque de bits libre côté émetteur : le récepteur applique ce qu'il reçoit.
+    /// Relevé en jeu (batchmode, vélo à l'arrêt) : cog, spine_1, hand_L/R translatent (IK des mains) ;
+    /// suspensions et roues ajoutées par prudence, à confirmer en roulant (DebugLog).
     public static readonly uint DefaultPositionMask = MaskOf(
-        "root", "cog", "back_suspension", "wheel_back_axis", "handlebar", "wheel_front_axis", "pedal", "spine_1");
+        "root", "cog", "back_suspension", "wheel_back_axis", "handlebar", "wheel_front_axis", "pedal", "spine_1",
+        "hand_L", "hand_R");
 
     public static int IndexOf(string bone) => System.Array.IndexOf(Bones, bone);
 

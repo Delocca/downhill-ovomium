@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mod LmdMulti : fantômes réseau en LAN. Une seule DLL à copier dans <jeu>/Mods/.
+       Le cœur sans Unity (../LmdMulti.Core) est compilé dedans (fichiers liés).
+       Références : ../../refs (assemblies MelonLoader + interop du jeu, gitignoré). -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>LmdMulti</AssemblyName>
+    <RootNamespace>LmdMulti</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RefsDir>$(MSBuildThisFileDirectory)../../refs/</RefsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../LmdMulti.Core/**/*.cs" Exclude="../LmdMulti.Core/obj/**;../LmdMulti.Core/bin/**"
+             Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="$(RefsDir)MelonLoader.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppSystem.dll" Private="false" />
+    <Reference Include="$(RefsDir)Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppMegagon.Framework.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppFacepunch.Steamworks.Win64.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.ScreenCaptureModule.dll" Private="false" />
+  </ItemGroup>
+</Project>

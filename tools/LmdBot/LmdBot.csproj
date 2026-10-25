@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Bot de test : un faux joueur LmdMulti (Linux, console). Aide : dotnet run (dossier tools/LmdBot) puis option help -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>LmdBot</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/LmdMulti.Core/LmdMulti.Core.csproj" />
+  </ItemGroup>
+</Project>
