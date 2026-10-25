@@ -224,11 +224,7 @@ internal static class RaceHud
             lines.Add((Colored("Résultats partiels : l'hôte a quitté pendant la course", DnfRed), "", _row));
         int pos = 0;
         foreach (var e in v.Entries.Where(e => e.IsListed))
-        {
-            var (left, right, _) = EntryLine(s, e, ++pos);
-            if (e.State == RacerState.Finished) left = $"{pos}." + left.Substring(left.IndexOf(' '));
-            lines.Add((left, right, _row));
-        }
+            lines.Add(EntryLine(s, e, ++pos)); // place affichée pour les arrivés (et en course) par EntryLine
         lines.Add(($"<size={(int)(13 * S)}><color=#aaaaaa>{RaceKeys.Go} fermer</color></size>", "", _row));
         float w = Mathf.Min(Screen.width * 0.9f, 460 * S);
         // Milieu d'écran : en haut, l'écran de résultats du jeu affiche titre et défis.
@@ -280,5 +276,5 @@ internal static class RaceHud
 
     private static string Colored(string s, Color c) => $"<color=#{GuiKit.Hex(c)}>{s}</color>";
 
-    private static string Esc(string s) => (s ?? "").Replace("<", "‹").Replace(">", "›");
+    private static string Esc(string s) => GuiKit.Esc(s);
 }

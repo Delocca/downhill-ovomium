@@ -29,7 +29,7 @@ internal static class TrackAccess
         if (IsForced(currentTrack)) return true;
         if (string.IsNullOrEmpty(id)) return false;
         foreach (var track in ForcedTracks.Keys)
-            if (id.StartsWith(track)) return true;
+            if (id.StartsWith(track, System.StringComparison.Ordinal)) return true;
         return false;
     }
 
@@ -43,7 +43,7 @@ internal static class TrackAccess
         for (int m = 0; m < list.Count; m++)
         {
             var mountain = list[m];
-            if (!trackId.StartsWith(mountain.m_mountainID + "_")) continue;
+            if (!trackId.StartsWith(mountain.m_mountainID + "_", System.StringComparison.Ordinal)) continue;
             int idx = mountain.Method_Public_Virtual_Final_New_Int32_String_Boolean_0(trackId, false);
             if (idx < 0) break;
             string before = GameInfo.SelectedTrackId();

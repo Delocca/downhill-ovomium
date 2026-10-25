@@ -10,9 +10,12 @@ public sealed partial class UdpNode
 {
     private EndPoint _from = new IPEndPoint(IPAddress.Any, 0);
 
+    /// Lit tout ce qui attend (au plus 1000 paquets d'affilée : les envois ne doivent pas attendre).
+    /// Pas de boucle sur `Available` : un datagramme vide (scan de ports…) y vaut 0 et ne serait jamais lu,
+    /// bloquant toute réception (test EmptyDatagram_DoesNotStallReception).
     private void ReceiveAll()
     {
-        while (_sock.Available > 0)
+        for (int n = 0; n < 1000 && _sock.Poll(0, SelectMode.SelectRead); n++)
         {
             int len;
             try { len = _sock.ReceiveFrom(_rx, ref _from); }
@@ -67,12 +70,18 @@ public sealed partial class UdpNode
         }
     }
 
-    private void EnqueuePose(ulong peerId, int len, double now) =>
-        _events.Enqueue(new NetEvent
+    /// Au-delà de MaxQueuedEvents en attente (fil principal arrêté : chargement long, jeu en arrière-plan),
+    /// les poses sont jetées (jamais les arrivées, départs ni messages) : la mémoire ne croît pas sans fin.
+    private const int MaxQueuedEvents = 4000;
+
+    private void EnqueuePose(ulong peerId, int len, double now)
+    {
+        if (_events.Count < MaxQueuedEvents) _events.Enqueue(new NetEvent
         {
             Kind = NetEventKind.Pose, PeerId = peerId, RecvMs = now,
             Pose = Messages.ReadPose(Messages.BodyReader(_rx, len)),
         });
+    }
 
     /// Notre pose revenue par la boucle locale : livrée comme celle d'un pair « écho ».
     private void HandleEchoPose(int len, double now)

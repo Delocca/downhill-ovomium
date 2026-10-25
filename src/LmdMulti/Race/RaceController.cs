@@ -72,11 +72,17 @@ internal sealed class RaceController
     {
         RestoreLocksWhenSettled(now);
         if (Session == null) return;
-        _lobby.Tick(now);
-        string error = _run.Update(Session, now);
-        if (error != null) Fail(error, now);
-        if (Session.View.Phase != _lastPhase) OnPhaseChanged(now);
-        if (Session.View.IsOver) _run.End();
+        try
+        {
+            _lobby.Tick(now);
+            string error = _run.Update(Session, now);
+            if (error != null) Fail(error, now);
+            if (Session.View.Phase != _lastPhase) OnPhaseChanged(now);
+        }
+        finally
+        {
+            if (Session.View.IsOver) _run.End(); // même après une erreur : le vélo ne doit pas rester bloqué
+        }
     }
 
     /// Verrous de pistes forcées remis seulement au menu installé depuis 2 s : remis pendant la sortie de

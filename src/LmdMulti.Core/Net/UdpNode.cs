@@ -25,7 +25,7 @@ public sealed partial class UdpNode : IDisposable
     private Thread _thread;
     private volatile bool _stop, _echo;
     private List<IPAddress> _broadcasts = new();
-    private double _nextAnnounce, _nextPing, _nextBroadcastRefresh;
+    private double _nextAnnounce, _nextPing, _nextBroadcastRefresh, _nextExpire;
 
     public ulong Id => _o.InstanceId;
     /// Identifiant du pair virtuel « écho » (notre pose revenue par le réseau).
@@ -107,8 +107,20 @@ public sealed partial class UdpNode : IDisposable
                 Periodic(NetClock.NowMs);
             }
             catch (ObjectDisposedException) { return; }
-            catch (Exception e) { _events.Enqueue(NetEvent.Log($"erreur réseau : {e.GetType().Name}: {e.Message}")); Thread.Sleep(100); }
+            catch (Exception e) { ReportError(e); Thread.Sleep(100); }
         }
+    }
+
+    private double _nextErrorReport;
+
+    /// Erreur de la boucle réseau : journalisée au plus toutes les 10 s (une erreur qui se répète
+    /// noierait le journal à 10 lignes par seconde).
+    private void ReportError(Exception e)
+    {
+        double now = NetClock.NowMs;
+        if (now < _nextErrorReport) return;
+        _nextErrorReport = now + 10000;
+        _events.Enqueue(NetEvent.Log($"erreur réseau : {e.GetType().Name}: {e.Message}"));
     }
 
     private void FlushPoses()
@@ -132,7 +144,7 @@ public sealed partial class UdpNode : IDisposable
         }
         if (now >= _nextAnnounce) { _nextAnnounce = now + _o.AnnounceIntervalMs; AnnounceAll(); }
         if (now >= _nextPing) { _nextPing = now + _o.PingIntervalMs; PingAll(); }
-        _peers.Expire(now, _o.PeerTimeoutMs);
+        if (now >= _nextExpire) { _nextExpire = now + 250; _peers.Expire(now, _o.PeerTimeoutMs); } // pas à chaque tour (≥ 200/s)
     }
 
     /// Annonce en broadcast + à chaque IP manuelle + en unicast à chaque pair connu
@@ -163,17 +175,22 @@ public sealed partial class UdpNode : IDisposable
         catch (SocketException) { /* hôte injoignable, réseau absent : l'expiration fera le ménage */ }
     }
 
+    /// Arrêt : derniers messages fiables émis une fois (ex. abandon de course), puis « Bye ». Si le fil ne
+    /// s'arrête pas à temps, il utilise encore les tampons : on ferme sans rien envoyer (les autres
+    /// verront notre départ à l'expiration, 5 s).
     public void Dispose()
     {
         if (_sock == null || _stop) return;
         _stop = true;
-        _thread?.Join(500); // le fil arrêté, _w est libre
-        try
-        {
-            Messages.WriteHeader(_w, MessageType.Bye, Id);
-            foreach (var (_, ep) in _peers.Targets()) Send(_w.Buffer, _w.Length, ep);
-        }
-        catch (Exception) { /* fermeture au mieux */ }
+        bool stopped = _thread == null || _thread.Join(500);
+        if (stopped)
+            try
+            {
+                FlushMessages(NetClock.NowMs);
+                Messages.WriteHeader(_w, MessageType.Bye, Id);
+                foreach (var (_, ep) in _peers.Targets()) Send(_w.Buffer, _w.Length, ep);
+            }
+            catch (Exception) { /* fermeture au mieux */ }
         _sock.Dispose();
         Status = "arrêté";
     }

@@ -38,6 +38,17 @@ internal sealed class Puppet
         var holder = new GameObject("LmdMultiHolder");
         holder.SetActive(false);
         var go = Object.Instantiate(source, holder.transform);
+        try { return Build(go, holder, name, color, style); }
+        catch
+        {
+            Object.Destroy(go); // pas de copie orpheline à chaque nouvel essai
+            if (holder != null) Object.Destroy(holder);
+            throw;
+        }
+    }
+
+    private static Puppet Build(GameObject go, GameObject holder, string name, Color color, GhostLook.Style style)
+    {
         go.name = "LmdGhost " + name;
         Strip(go);
         go.transform.SetParent(null, false);

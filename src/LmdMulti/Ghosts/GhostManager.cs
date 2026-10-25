@@ -52,7 +52,11 @@ internal sealed class GhostManager
         foreach (var g in _ghosts.Values)
         {
             try { if (UpdateGhost(g, myTrack, source, nowMs)) visible++; }
-            catch (Exception e) { Log.ErrorThrottled($"fantôme {g.Info.Name}", e); }
+            catch (Exception e)
+            {
+                if (g.Puppet == null) g.RetryAtMs = nowMs + 5000; // création ratée : pas un essai par image
+                Log.ErrorThrottled($"fantôme {g.Info.Name}", e);
+            }
         }
         VisibleCount = visible;
     }

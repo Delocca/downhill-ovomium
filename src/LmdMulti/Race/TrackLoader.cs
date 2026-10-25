@@ -78,6 +78,8 @@ internal sealed class TrackLoader
     /// Menu de jeu prêt depuis un instant (les écrans s'animent) ; sur l'écran titre, on appuie sur « commencer ».
     private void WaitMenu(double now)
     {
+        if (now < _nextCheck) return; // recherches dans la scène : 4×/s suffisent
+        _nextCheck = now + 250;
         if (Object.FindObjectOfType<GameMenu>() == null || GameInfo.LoadingVisible())
         {
             _since = double.NaN;

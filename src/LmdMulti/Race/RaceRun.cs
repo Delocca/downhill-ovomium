@@ -66,6 +66,9 @@ internal sealed class RaceRun
                 break;
             case RacerState.Racing:
                 return Ride(s, now);
+            default:
+                if (!me.IsActive && RaceGame.HoldAtStart) End(); // sorti par l'hôte (exclu…) : vélo libéré tout de suite
+                break;
         }
         return null;
     }
@@ -90,8 +93,10 @@ internal sealed class RaceRun
         if (GameInfo.CurrentTrackId() != _track) { s.Abandon(now); return "Tu as quitté la piste : abandon"; }
         if (RaceGame.LastSection > _sections) { _sections = RaceGame.LastSection; s.Progress(_sections, now); }
         if (!(RaceGame.FinishCalledAtMs > _releasedAt)) return null;
-        uint time = (uint)System.Math.Max(0, now - s.View.StartAtMs);
-        FinishedAtMs = now;
+        // Instant noté par le patch d'arrivée (pas celui de l'image) : départage au plus juste.
+        double finishedAt = RaceGame.FinishCalledAtMs;
+        uint time = (uint)System.Math.Max(0, finishedAt - s.View.StartAtMs);
+        FinishedAtMs = finishedAt;
         s.Finish(time, now);
         Log.Info($"course : arrivée en {Ranking.FormatTime(time)} (sections {_sections}, chrono du jeu {RaceGame.GameTimeText()})");
         return null;

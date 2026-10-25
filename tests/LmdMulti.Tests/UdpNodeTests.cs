@@ -103,6 +103,18 @@ public class UdpNodeTests
     }
 
     [Fact]
+    public void EmptyDatagram_DoesNotStallReception()
+    {
+        int pa = Interlocked.Add(ref _nextPort, 4), pb = pa + 1;
+        using var a = Node(pa, pb, "Alice");
+        using var raw = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        raw.SendTo(Array.Empty<byte>(), new IPEndPoint(IPAddress.Loopback, pa)); // scan de port, outil tiers…
+        Thread.Sleep(50);
+        using var b = Node(pb, pa, "Bob");
+        Assert.Equal("Bob", WaitFor(a, e => e.Kind == NetEventKind.PeerJoined).Peer.Name);
+    }
+
+    [Fact]
     public void BusyPort_FallsBackToNextOne()
     {
         int p = Interlocked.Add(ref _nextPort, 4);

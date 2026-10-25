@@ -58,7 +58,8 @@ public class LmdMultiMod : MelonMod
         Log.Try("état local", () => RefreshLocal(now));
         Log.Try("événements réseau", DrainEvents);
         Log.Try("touches", HandleKeys);
-        Log.Try("course", () => { _race.HandleKeys(now, _myName); _race.Update(now); });
+        Log.Try("touches de course", () => _race.HandleKeys(now, _myName));
+        Log.Try("course", () => _race.Update(now)); // séparés : une touche en erreur ne fige pas la course
         // Capture et application dans Update : les contraintes Unity (cheveux, phares) suivent dans la même image.
         Log.Try("envoi pose", () => _sender.Tick(_node, _myTrack, now, _tools.PositionMask));
         Log.Try("fantômes", () => _ghosts.Update(_myTrack, _capture.BikeObject, now));
@@ -91,11 +92,13 @@ public class LmdMultiMod : MelonMod
     public override void OnApplicationQuit() => Shutdown();
     public override void OnDeinitializeMelon() => Shutdown();
 
+    /// Fermeture du jeu (appelée deux fois : chaque étape est sans effet la seconde). Chaque étape isolée :
+    /// le réseau doit toujours se fermer, avec « Bye » (les autres retirent notre fantôme tout de suite).
     private void Shutdown()
     {
-        _race?.Shutdown(NetClock.NowMs);
-        _sender?.Dispose();
-        _node?.Dispose(); // envoie « Bye » : les autres retirent notre fantôme tout de suite
+        if (_race != null) Log.Try("fermeture : course", () => _race.Shutdown(NetClock.NowMs));
+        if (_sender != null) Log.Try("fermeture : enregistrement", _sender.Dispose);
+        if (_node != null) Log.Try("fermeture : réseau", _node.Dispose);
     }
 
     /// Pseudo et piste locale, transmis aux annonces (2×/s).

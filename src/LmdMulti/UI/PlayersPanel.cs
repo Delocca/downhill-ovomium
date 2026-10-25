@@ -76,8 +76,7 @@ internal sealed class PlayersPanel
     /// Tri naturel : « Bot-2 » avant « Bot-10 ».
     private static string NaturalKey(string s) => Regex.Replace(s.ToLowerInvariant(), @"\d+", m => m.Value.PadLeft(8, '0'));
 
-    /// Un pseudo ne doit pas pouvoir injecter de balises de mise en forme.
-    private static string Esc(string s) => s.Replace("<", "‹").Replace(">", "›");
+    private static string Esc(string s) => GuiKit.Esc(s);
 
     public void Draw()
     {

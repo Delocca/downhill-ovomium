@@ -50,9 +50,19 @@ internal static class GameInfo
     }
 
     /// Écran de chargement encore visible (la piste peut être « en cours » avant qu'il ne disparaisse).
+    /// Écrans de chargement de la scène (actifs ou non), retrouvés au plus toutes les 5 s : une recherche
+    /// dans toute la scène à chaque appel (2×/s en piste) coûte plus que la lecture.
     public static bool LoadingVisible()
     {
-        foreach (var o in Object.FindObjectsOfType<LoadingScreenOverlay>())
+        double now = NetClock.NowMs;
+        if (now >= _nextOverlaySearch || _overlays.Exists(o => o == null))
+        {
+            _nextOverlaySearch = now + 5000;
+            _overlays.Clear();
+            foreach (var o in Resources.FindObjectsOfTypeAll<LoadingScreenOverlay>())
+                if (o.gameObject.scene.IsValid()) _overlays.Add(o); // pas le prefab
+        }
+        foreach (var o in _overlays)
         {
             if (!o.isActiveAndEnabled) continue;
             var group = o.field_Private_CanvasGroup_0;
@@ -60,6 +70,9 @@ internal static class GameInfo
         }
         return false;
     }
+
+    private static readonly List<LoadingScreenOverlay> _overlays = new();
+    private static double _nextOverlaySearch;
 
     /// Menu de jeu affiché, hors de tout chargement (état menus, écran GameMenu présent, pas d'écran de chargement).
     public static bool MenuSettled() =>

@@ -70,6 +70,9 @@ internal static class GuiKit
         GUI.color = old;
     }
 
+    /// Un pseudo ne doit pas pouvoir injecter de balises de mise en forme.
+    public static string Esc(string s) => (s ?? "").Replace("<", "‹").Replace(">", "›");
+
     /// « RRGGBB » pour les balises <color> (ColorUtility.ToHtmlStringRGB : « unstripping failed » dans cette build).
     public static string Hex(Color c) =>
         $"{(int)(Mathf.Clamp01(c.r) * 255):X2}{(int)(Mathf.Clamp01(c.g) * 255):X2}{(int)(Mathf.Clamp01(c.b) * 255):X2}";
