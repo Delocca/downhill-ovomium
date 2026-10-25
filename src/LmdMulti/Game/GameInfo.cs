@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using Il2CppMegagon.Downhill;
 using Il2CppMegagon.Downhill.Tracks;
+using Il2CppMegagon.Downhill.UI.Screens;
+using LmdMulti.Core.Net;
+using UnityEngine;
 
 namespace LmdMulti.Game;
 
@@ -33,6 +36,22 @@ internal static class GameInfo
         catch (System.Exception) { name = null; }
         if (string.IsNullOrEmpty(name)) return id; // pas de cache : réessai plus tard (localisation pas prête)
         return TrackNames[id] = name;
+    }
+
+    private static PauseScreen _pause;
+    private static double _nextPauseSearch;
+
+    /// Menu pause du jeu ouvert ? (écran PauseScreen de la scène actif ; recherché au plus toutes les 2 s)
+    public static bool IsPaused()
+    {
+        if (_pause == null)
+        {
+            if (NetClock.NowMs < _nextPauseSearch) return false;
+            _nextPauseSearch = NetClock.NowMs + 2000;
+            foreach (var p in Resources.FindObjectsOfTypeAll<PauseScreen>())
+                if (p.gameObject.scene.IsValid()) { _pause = p; break; } // pas le prefab
+        }
+        return _pause != null && _pause.isActiveAndEnabled;
     }
 
     /// Pseudo et SteamId si Steam est prêt.

@@ -9,7 +9,10 @@ internal static class GuiKit
     private static int _builtForHeight;
 
     public static GUIStyle Text, Small, Label, Centered;
-    public static float Scale => Screen.height / 1080f;
+
+    /// Échelle des textes : proportionnelle à la hauteur d'écran (référence 1080p), avec un plancher
+    /// pour rester lisible dans une petite fenêtre (640×480 : textes de 12-13 px au lieu de 7-8).
+    public static float Scale => Mathf.Max(Screen.height / 1080f, 0.72f);
 
     public static void Ensure()
     {
@@ -18,7 +21,7 @@ internal static class GuiKit
         if (_dark == null)
         {
             _dark = new Texture2D(1, 1);
-            _dark.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.55f));
+            _dark.SetPixel(0, 0, new Color(0.05f, 0.06f, 0.08f, 0.6f));
             _dark.Apply();
         }
         Text = Make(17, FontStyle.Normal);
@@ -31,12 +34,21 @@ internal static class GuiKit
 
     private static GUIStyle Make(int size, FontStyle style)
     {
-        var s = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(10, Mathf.RoundToInt(size * Scale)), fontStyle = style, richText = true };
+        var s = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = Mathf.RoundToInt(size * Scale), fontStyle = style, richText = true, wordWrap = false, clipping = TextClipping.Overflow,
+        };
+        s.padding = new RectOffset(0, 0, 0, 0);
+        s.margin = new RectOffset(0, 0, 0, 0);
         s.normal.textColor = Color.white;
         return s;
     }
 
     public static void Panel(Rect r) => GUI.DrawTexture(r, _dark);
+
+    /// « RRGGBB » pour les balises <color> (ColorUtility.ToHtmlStringRGB : « unstripping failed » dans cette build).
+    public static string Hex(Color c) =>
+        $"{(int)(Mathf.Clamp01(c.r) * 255):X2}{(int)(Mathf.Clamp01(c.g) * 255):X2}{(int)(Mathf.Clamp01(c.b) * 255):X2}";
 
     /// Texte avec ombre portée : lisible sur la neige comme sur la roche.
     public static void Shadowed(Rect r, string text, GUIStyle style, Color color)

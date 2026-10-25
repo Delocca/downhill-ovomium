@@ -15,13 +15,13 @@ internal static class Config
     public static MelonPreferences_Entry<int> Port;
     public static MelonPreferences_Entry<string> ManualPeers;
     public static MelonPreferences_Entry<string> Nickname;
-    public static MelonPreferences_Entry<string> PanelKey, EchoKey, CaptureKey;
+    public static MelonPreferences_Entry<string> PanelKey, EchoKey, CaptureKey, StyleKey;
     public static MelonPreferences_Entry<bool> ShowPanel;
     public static MelonPreferences_Entry<bool> EchoMode;
     public static MelonPreferences_Entry<float> EchoDelaySeconds;
     public static MelonPreferences_Entry<int> SendRateHz;
     public static MelonPreferences_Entry<int> InterpolationDelayMs;
-    public static MelonPreferences_Entry<bool> GhostTint;
+    public static MelonPreferences_Entry<string> GhostStyle;
     public static MelonPreferences_Entry<bool> RecordPoses;
     public static MelonPreferences_Entry<bool> DebugLog;
 
@@ -37,13 +37,14 @@ internal static class Config
         Nickname = c.CreateEntry("Nickname", "", description: "Pseudo affiché ; vide = pseudo Steam");
         PanelKey = c.CreateEntry("PanelKey", "F8", description: "Touche : afficher/masquer le panneau des joueurs");
         EchoKey = c.CreateEntry("EchoKey", "F9", description: "Touche : activer/couper le mode écho");
+        StyleKey = c.CreateEntry("StyleKey", "F7", description: "Touche : changer l'aspect des fantômes (GhostStyle)");
         CaptureKey = c.CreateEntry("CaptureKey", "F10", description: "Touche : capture d'écran dans UserData/LmdMulti/captures");
         ShowPanel = c.CreateEntry("ShowPanel", true, description: "Panneau des joueurs visible au démarrage");
         EchoMode = c.CreateEntry("EchoMode", false, description: "Debug : affiche son propre fantôme, revenu par le réseau local avec un retard");
         EchoDelaySeconds = c.CreateEntry("EchoDelaySeconds", 2f, description: "Retard du fantôme écho (secondes)");
         SendRateHz = c.CreateEntry("SendRateHz", 25, description: "Poses envoyées par seconde (10 à 60)");
         InterpolationDelayMs = c.CreateEntry("InterpolationDelayMs", 100, description: "Retard d'affichage des fantômes (ms) : absorbe la gigue du réseau");
-        GhostTint = c.CreateEntry("GhostTint", true, description: "Teinte bleutée des fantômes");
+        GhostStyle = c.CreateEntry("GhostStyle", "Translucent", description: "Aspect des fantômes, nuancé de la couleur de chaque joueur : Translucent (semi-transparent), Tint (opaque, teinté), None (comme ton vélo)");
         RecordPoses = c.CreateEntry("RecordPoses", false, description: "Debug : enregistre ses poses dans UserData/LmdMulti/recordings (rejouables par LmdBot)");
         DebugLog = c.CreateEntry("DebugLog", false, description: "Debug : statistiques réseau et mouvements des os dans le journal");
         c.SaveToFile(false); // écrit les valeurs par défaut manquantes (fichier documenté)

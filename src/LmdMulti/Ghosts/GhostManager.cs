@@ -68,7 +68,7 @@ internal sealed class GhostManager
         if (g.Puppet == null)
         {
             if (nowMs < g.RetryAtMs) return false;
-            g.Puppet = Puppet.Create(source, g.Info.Name, Config.GhostTint.Value);
+            g.Puppet = Puppet.Create(source, g.Info.Name, ColorOf(g), GhostLook.Parse(Config.GhostStyle.Value));
             if (g.Puppet == null) { g.RetryAtMs = nowMs + 5000; Log.Warn($"marionnette impossible pour {g.Info.Name}"); return false; }
             Log.Info($"fantôme créé : {g.Info.Name} ({g.Info.Track})");
         }
@@ -86,11 +86,13 @@ internal sealed class GhostManager
     private static double DelayMs(PeerInfo p) =>
         Config.InterpolationDelayMs.Value + (p.IsEcho ? Config.EchoDelaySeconds.Value * 1000.0 : 0);
 
-    /// Pseudos à afficher : (nom, position monde au-dessus de la tête, écho ?).
-    public IEnumerable<(string name, Vector3 pos, bool echo)> Labels()
+    private static Color ColorOf(Ghost g) => GhostLook.ColorFor(g.Info.Id, g.Info.IsEcho);
+
+    /// Pseudos à afficher : (nom, position monde au-dessus de la tête, couleur du joueur).
+    public IEnumerable<(string name, Vector3 pos, Color color)> Labels()
     {
         foreach (var g in _ghosts.Values)
-            if (g.Puppet != null && g.Puppet.IsAlive) yield return (g.Info.Name, g.Puppet.LabelPosition, g.Info.IsEcho);
+            if (g.Puppet != null && g.Puppet.IsAlive) yield return (g.Info.Name, g.Puppet.LabelPosition, ColorOf(g));
     }
 
     /// Diagnostic : pose échantillonnée vs position réelle de la marionnette (relue dans Unity).
@@ -113,9 +115,13 @@ internal sealed class GhostManager
         return n;
     }
 
-    public void Clear()
+    /// Détruit les marionnettes (aspect changé) : Update les recrée à l'image suivante.
+    public void RebuildPuppets()
     {
-        foreach (var g in _ghosts.Values) g.Puppet?.Destroy();
-        _ghosts.Clear();
+        foreach (var g in _ghosts.Values)
+        {
+            g.Puppet?.Destroy();
+            g.Puppet = null;
+        }
     }
 }

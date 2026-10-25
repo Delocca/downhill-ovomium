@@ -27,6 +27,7 @@ public class LmdMultiMod : MelonMod
     private readonly SessionTools _tools = new();
     private string _myName = "?", _myTrack;
     private double _nextLocalRefresh;
+    private readonly System.Diagnostics.Stopwatch _cost = new(); // temps passé dans le mod (DebugLog)
 
     public override void OnInitializeMelon()
     {
@@ -48,6 +49,8 @@ public class LmdMultiMod : MelonMod
     public override void OnUpdate()
     {
         if (_node == null) return;
+        _tools.Frame(_cost.Elapsed.TotalMilliseconds); // coût de l'image précédente (Update + tous les OnGUI)
+        _cost.Restart();
         double now = NetClock.NowMs;
         Log.Try("état local", () => RefreshLocal(now));
         Log.Try("événements réseau", DrainEvents);
@@ -61,17 +64,23 @@ public class LmdMultiMod : MelonMod
             _tools.Tick(_node, _ghosts.VisibleCount, _ghosts.TotalHolds(), _myTrack, _ghosts.Describe);
             _panel.Refresh(_node, _myName, _myTrack, _ghosts.IsVisible);
         });
+        _cost.Stop();
     }
 
     public override void OnGUI()
     {
-        if (_node == null) return;
+        // Rien d'interactif : on ne dessine qu'à l'événement Repaint (OnGUI est appelé plusieurs fois par image).
+        if (_node == null || Event.current.type != EventType.Repaint) return;
+        _cost.Start();
         Log.Try("affichage", () =>
         {
-            NameLabels.Draw(_ghosts.Labels());
+            Vector3? me = _myTrack != null && _sender.LastFrame != null ? _sender.LastFrame.RootPos.ToUnity() : null;
+            // Menu pause du jeu : les pseudos passeraient par-dessus ses boutons.
+            if (_myTrack != null && !GameInfo.IsPaused()) NameLabels.Draw(_ghosts.Labels(), me);
             _panel.Draw();
             _toasts.Draw();
         });
+        _cost.Stop();
     }
 
     public override void OnApplicationQuit() => Shutdown();
@@ -136,8 +145,20 @@ public class LmdMultiMod : MelonMod
         if (Input.GetKeyDown(Config.Key(Config.EchoKey)))
         {
             _node.Echo = !_node.Echo;
-            _toasts.Show(_node.Echo ? $"Écho activé : ton fantôme te suit à {Config.EchoDelaySeconds.Value:0.#} s" : "Écho coupé", new Color(1f, 0.85f, 0.4f));
+            _toasts.Show(_node.Echo ? $"Écho activé : ton fantôme te suit à {Config.EchoDelaySeconds.Value:0.#} s" : "Écho coupé", new Color(1f, 0.85f, 0.4f), "echo");
         }
         if (Input.GetKeyDown(Config.Key(Config.CaptureKey))) _tools.Capture();
+        if (Input.GetKeyDown(Config.Key(Config.StyleKey))) CycleGhostStyle();
+    }
+
+    /// Aspect suivant, enregistré dans la config ; les marionnettes sont recréées à l'image suivante.
+    private void CycleGhostStyle()
+    {
+        var next = (GhostLook.Style)(((int)GhostLook.Parse(Config.GhostStyle.Value) + 1) % 3);
+        Config.GhostStyle.Value = next.ToString();
+        Config.GhostStyle.Category.SaveToFile(false); // notre fichier seulement (Save() global crée MelonPreferences.cfg)
+        _ghosts.RebuildPuppets();
+        string label = next switch { GhostLook.Style.Tint => "teinté", GhostLook.Style.Translucent => "translucide", _ => "normal" };
+        _toasts.Show($"Aspect des fantômes : {label}", new Color(0.8f, 0.9f, 1f), "style");
     }
 }
