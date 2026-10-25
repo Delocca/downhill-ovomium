@@ -4,8 +4,7 @@ using System.Linq;
 
 namespace Ovomium.Core.Keys;
 
-/// Touches effectives du mod, sans Unity (testé dans tests/) : le réglage du joueur s'il l'a changé, sinon le
-/// défaut normal, ou le défaut « VR » quand le mod LMD-VR est installé (ses touches sont codées en dur).
+/// Touches du mod face à celles de LMD-VR, sans Unity (testé dans tests/).
 public static class KeyChoice
 {
     /// Touches clavier de LMD-VR 1.0.0 (Mod.HandleKeyboard / KeyboardLook), noms de KeyCode d'Unity.
@@ -16,14 +15,7 @@ public static class KeyChoice
         "Keypad2", "Keypad4", "Keypad5", "Keypad6", "Keypad8",
     };
 
-    /// Touche à utiliser. Un réglage égal au défaut normal compte comme « pas personnalisé ».
-    public static string Effective(string value, string normalDefault, string vrDefault, bool vrInstalled) =>
-        vrInstalled && IsDefault(value, normalDefault) ? vrDefault : value?.Trim();
-
-    public static bool IsDefault(string value, string normalDefault) =>
-        string.Equals(value?.Trim(), normalDefault, StringComparison.OrdinalIgnoreCase);
-
-    /// Touches (effectives) qui tombent sur une touche de LMD-VR : les deux mods réagiraient au même appui.
+    /// Touches qui tombent sur une touche de LMD-VR : les deux mods réagiraient au même appui.
     public static IEnumerable<string> VrConflicts(IEnumerable<string> keys) =>
         keys.Where(k => VrKeys.Contains(k?.Trim(), StringComparer.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase);
 }

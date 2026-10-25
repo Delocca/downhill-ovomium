@@ -75,7 +75,7 @@ guide() {
      ✔ Rien ne se passe, et le vélo ne s'est pas crashé (B seul = crash volontaire).
   4. Maintiens Select + B jusqu'au bout (1,5 s) → « Tu as abandonné ».
   5. Le texte d'aide en bas du panneau de course doit parler de « Select + … ».
-     Appuie sur une flèche du clavier puis regarde : il doit dire « F6 … ».
+     Appuie sur une flèche du clavier puis regarde : il doit dire « F1 … ».
   6. Ici, tape i + Entrée : un bot t'invite. Le bandeau doit dire « Select + A
      rejoindre » (si tu as touché la manette en dernier). Accepte avec Select + A.
   7. Ferme le jeu, puis tape q + Entrée ici.

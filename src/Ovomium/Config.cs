@@ -39,19 +39,19 @@ internal static class Config
         Port = c.CreateEntry("Port", 47700, description: "Port UDP (le même pour tous les joueurs)");
         ManualPeers = c.CreateEntry("ManualPeers", "", description: "IP des joueurs hors réseau local (Tailscale…), séparées par des virgules, ex. \"100.64.0.2, 100.64.0.3:47701\"");
         Nickname = c.CreateEntry("Nickname", "", description: "Pseudo affiché ; vide = pseudo Steam");
-        RaceKey = Key(c, "RaceKey", "F6", "F1", "course", "Touche course. Appui : lancer une course sur ta piste / accepter une invitation / (hôte) partir sans attendre / fermer les résultats. Maintenue 1,5 s : abandonner / (hôte) annuler. Manette : Select + A, Select + B maintenus");
-        StyleKey = Key(c, "StyleKey", "F7", "F2", "aspect", "Touche : changer l'aspect des fantômes (GhostStyle)");
-        PanelKey = Key(c, "PanelKey", "F8", "F3", "panneau", "Touche : afficher/masquer le panneau des joueurs");
-        EchoKey = Key(c, "EchoKey", "F9", "F4", "écho", "Touche : activer/couper le mode écho");
+        RaceKey = Key(c, "RaceKey", "F1", "course", "Touche course. Appui : lancer une course sur ta piste / accepter une invitation / (hôte) partir sans attendre / fermer les résultats. Maintenue 1,5 s : abandonner / (hôte) annuler. Manette : Select + A, Select + B maintenus");
+        StyleKey = Key(c, "StyleKey", "F2", "aspect", "Touche : changer l'aspect des fantômes (GhostStyle)");
+        PanelKey = Key(c, "PanelKey", "F3", "panneau", "Touche : afficher/masquer le panneau des joueurs");
+        EchoKey = Key(c, "EchoKey", "F4", "écho", "Touche : activer/couper le mode écho");
         SkipIntro = c.CreateEntry("SkipIntro", true, description: "Démarrage rapide : passe les logos et l'écran « Appuyez sur… » pour arriver directement au menu");
         KeyboardLayout = c.CreateEntry("KeyboardLayout", "auto", description: "Clavier : auto (lettres du jeu, ex. ZQSD pour diriger, adaptées à ta disposition : AZERTY, QWERTZ…), azerty, qwertz, ou qwerty (touches du jeu inchangées)");
-        CameraKey = Key(c, "CameraKey", "V", "V", "vue", "Touche : vue à la première personne ⇄ vue normale (mod LMD-Camera ; manette : clic du stick droit ; coupée pendant la VR de LMD-VR)");
+        CameraKey = Key(c, "CameraKey", "V", "vue", "Touche : vue à la première personne ⇄ vue normale (mod LMD-Camera ; manette : clic du stick droit ; coupée pendant la VR de LMD-VR)");
         ShowPanel = c.CreateEntry("ShowPanel", true, description: "Panneau des joueurs visible au démarrage");
         EchoMode = c.CreateEntry("EchoMode", false, description: "Debug : affiche son propre fantôme, revenu par le réseau local avec un retard");
         EchoDelaySeconds = c.CreateEntry("EchoDelaySeconds", 2f, description: "Retard du fantôme écho (secondes)");
         SendRateHz = c.CreateEntry("SendRateHz", 25, description: "Poses envoyées par seconde (10 à 60)");
         InterpolationDelayMs = c.CreateEntry("InterpolationDelayMs", 100, description: "Retard d'affichage des fantômes (ms) : absorbe la gigue du réseau");
-        GhostStyle = c.CreateEntry("GhostStyle", "None", description: "Aspect des fantômes (F7 pour essayer) : None (normal, comme ton vélo), Translucent (semi-transparent, nuancé de la couleur du joueur), Tint (opaque, teinté)");
+        GhostStyle = c.CreateEntry("GhostStyle", "None", description: "Aspect des fantômes (F2 pour essayer) : None (normal, comme ton vélo), Translucent (semi-transparent, nuancé de la couleur du joueur), Tint (opaque, teinté)");
         RecordPoses = c.CreateEntry("RecordPoses", false, description: "Debug : enregistre ses poses dans UserData/Ovomium/recordings (rejouables par LmdBot)");
         DebugLog = c.CreateEntry("DebugLog", false, description: "Debug : statistiques réseau et mouvements des os dans le journal");
         TestMode = c.CreateEntry("TestMode", false, description: "Tests seulement : le jeu n'enregistre aucun résultat (classements en ligne et locaux, succès, stats Steam, progression). À laisser à false pour jouer");
@@ -59,12 +59,8 @@ internal static class Config
         c.SaveToFile(false); // écrit les valeurs par défaut manquantes (fichier documenté)
     }
 
-    /// Touche réglable ; avec LMD-VR installé, vrDefault remplace le défaut (ses touches F5-F7 et F9-F11 sont figées).
-    private static KeySetting Key(MelonPreferences_Category c, string id, string def, string vrDefault, string label, string description)
-    {
-        if (vrDefault != def) description += $". Avec le mod LMD-VR : {vrDefault} si laissée à {def}";
-        return new KeySetting(c.CreateEntry(id, def, description: description), vrDefault, label);
-    }
+    private static KeySetting Key(MelonPreferences_Category c, string id, string def, string label, string description) =>
+        new(c.CreateEntry(id, def, description: description), label);
 
     public static int ClampedSendRate => Math.Clamp(SendRateHz.Value, 10, 60);
 }

@@ -43,7 +43,7 @@ internal sealed class PlayersPanel
         if (_onTrack) AddTrackLines(ok, myTrack, isGhostVisible);
         else AddMenuLines(ok);
         if (peers.Count == 0) _lines.Add(Grey("aucun autre joueur détecté"));
-        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Race.RaceKeys.Go} course · {Config.PanelKey.Name} panneau · {Config.StyleKey.Name} aspect · {Config.EchoKey.Name} écho{ExtraHint}")}</size>");
+        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Race.RaceKeys.Go} course · {Config.StyleKey.Name} aspect · {Config.PanelKey.Name} panneau · {Config.EchoKey.Name} écho{ExtraHint}")}</size>");
     }
 
     private void AddTrackLines(List<PeerInfo> peers, string myTrack, System.Func<ulong, bool> isGhostVisible)

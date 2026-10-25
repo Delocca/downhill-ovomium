@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using MelonLoader;
@@ -8,8 +7,8 @@ using Ovomium.Core.Keys;
 namespace Ovomium.View;
 
 /// Compatibilité avec le mod LMD-VR 1.0.0 (visual-gh, licence MIT, installé à part par le joueur) :
-/// - installé → nos touches F6-F9 laissées par défaut deviennent F1-F4, dans le même ordre (KeySetting ; ses
-///   touches F5-F7 et F9-F11 sont codées en dur), et l'avis KeysNotice le dit au menu ;
+/// - installé → KeysNotice signale au menu nos touches réglées sur les siennes (codées en dur : F5-F7, F9-F11…) ;
+///   nos défauts F1-F4 et V n'en croisent aucune ;
 /// - VR démarrée → CameraToggle coupe notre bascule V / R3 (R3 et L3+R3 sont à lui, et c'est lui qui pilote la caméra).
 /// « Démarrée » se lit par réflexion dans ses membres privés : Mod._vr (VrManager) → _session (VrSession) → State,
 /// démarrée hors Off et Failed (comme sa touche F9). Une autre version peut casser cette lecture : on considère alors
@@ -31,27 +30,20 @@ internal static class LmdVrBridge
             _searched = true;
             _melon = MelonBase.RegisteredMelons.FirstOrDefault(m => m.Info.Name == MelonName);
             Log.Info(_melon == null ? "VR : mod LMD-VR absent"
-                : $"VR : LMD-VR {_melon.Info.Version} trouvé, touches F1-F4 par défaut, bascule de vue coupée pendant la VR");
+                : $"VR : LMD-VR {_melon.Info.Version} trouvé, bascule de vue coupée pendant la VR");
             return _melon != null;
         }
     }
 
-    /// Avis pour le joueur (null sans LMD-VR ou si rien à dire) : où sont passées nos touches laissées par défaut,
-    /// et lesquelles, réglées à la main, tombent sur les siennes (journalisées).
+    /// Avis pour le joueur (null sans LMD-VR ou sans conflit) : nos touches qui tombent sur les siennes (journalisées).
     public static string KeysNotice()
     {
         if (!Installed) return null;
-        static string Describe(IEnumerable<KeySetting> keys) => string.Join(" · ", keys.Select(k => $"{k.Name} {k.Label}"));
-        var moved = Config.AllKeys.Where(k => KeyChoice.IsDefault(k.Entry.Value, k.Entry.DefaultValue) && k.Name != k.Entry.DefaultValue).ToList();
         var clashes = Config.AllKeys.Where(k => KeyChoice.VrConflicts(new[] { k.Name }).Any()).ToList();
-        var notice = new List<string>();
-        if (moved.Count > 0) notice.Add($"LMD-VR détecté : touches d'Ovomium {Describe(moved)}");
-        if (clashes.Count > 0)
-        {
-            Log.Warn($"touches aussi utilisées par LMD-VR : {Describe(clashes)} ; à changer dans {Config.FilePath}");
-            notice.Add($"aussi utilisées par LMD-VR : {Describe(clashes)} (à changer dans Ovomium.cfg)");
-        }
-        return notice.Count > 0 ? string.Join(" ; ", notice) : null;
+        if (clashes.Count == 0) return null;
+        string list = string.Join(" · ", clashes.Select(k => $"{k.Name} {k.Label}"));
+        Log.Warn($"touches aussi utilisées par LMD-VR : {list} ; à changer dans {Config.FilePath}");
+        return $"Touches d'Ovomium aussi utilisées par LMD-VR : {list} (à changer dans Ovomium.cfg)";
     }
 
     /// Session VR démarrée (en attente du casque, au repos ou en cours).

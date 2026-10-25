@@ -155,7 +155,7 @@ do_install() {
     set_override set
     say "" "Installé ! Lance le jeu depuis Steam." \
         "Premier lancement LONG (2 à 10 min, fenêtre noire de MelonLoader) : c'est normal, ne ferme rien." \
-        "En jeu : F8 = joueurs, F6 = course (manette : Select + A). Voir LISEZ-MOI.txt."
+        "En jeu : F3 = joueurs, F1 = course (manette : Select + A). Voir LISEZ-MOI.txt."
 }
 
 do_uninstall() {

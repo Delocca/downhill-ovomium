@@ -70,7 +70,7 @@ guide() {
 
   ┌─────────────────────────── Mode d'emploi ───────────────────────────┐
   │ F10 dans le jeu = capture d'écran du jeu (à chaque étape ✔).        │
-  │ F8 = panneau des joueurs · F9 = écho on/off · F7 = aspect fantômes. │
+  │ F3 = panneau des joueurs · F4 = écho on/off · F2 = aspect fantômes. │
   └─────────────────────────────────────────────────────────────────────┘
   1. MENU : en haut à droite, le panneau « Ovomium 0.1.0 · écoute sur le
      port 47700 · écho ». Bot-orbite y est listé (menu, ping en ms) et un
@@ -79,13 +79,13 @@ guide() {
      - « (écho) » (pseudo ambre) = toi, 2 s en retard ;
      - « Bot-orbite » qui tourne autour de toi à 4 m en copiant ta pose.
      Pseudos colorés au-dessus des têtes, pastilles de même couleur dans
-     le panneau. F7 : essaie les 3 aspects (translucide, teinté, normal). ✔ F10
+     le panneau. F2 : essaie les 3 aspects (translucide, teinté, normal). ✔ F10
   3. Roule 30 s. Regarde ton écho : fluide ? vélo complet (roues qui
      tournent, suspension, pédalier) ? rider cohérent (mains au guidon,
      pieds aux pédales, tête, cheveux/casque) ?                    ✔ F10 ×2
   4. Crashe exprès : 2 s après, l'écho rejoue la chute (ragdoll), puis
      réapparaît au point de reprise sans glisser à travers la carte. ✔ F10
-  5. F8 deux fois, F9 deux fois (messages au centre).
+  5. F3 deux fois, F4 deux fois (messages au centre).
   6. Retourne au menu : les fantômes disparaissent. Puis ici, tape r +
      Entrée : Bot-rejeu rejoue ta descente. Relance la MÊME piste et
      regarde Bot-rejeu descendre.                                  ✔ F10

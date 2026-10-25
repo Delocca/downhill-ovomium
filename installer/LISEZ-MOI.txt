@@ -29,12 +29,12 @@ JOUER
 Tous les joueurs doivent être sur le même réseau (même box / même Wi-Fi) et avoir
 la même version d'Ovomium. Les autres apparaissent tout seuls.
 
-  F8                  afficher / cacher la liste des joueurs
-  F6                  lancer une course sur votre piste, ou accepter une invitation
-  F6 maintenu 1,5 s   abandonner la course (ou l'annuler si vous l'avez lancée)
-  F7                  changer l'aspect des autres joueurs (normal / transparent / teinté)
+  F1                  lancer une course sur votre piste, ou accepter une invitation
+  F1 maintenu 1,5 s   abandonner la course (ou l'annuler si vous l'avez lancée)
+  F2                  changer l'aspect des autres joueurs (normal / transparent / teinté)
+  F3                  afficher / cacher la liste des joueurs
   V                   vue à la première personne / vue normale (manette : clic du stick droit)
-  Manette : Select (Affichage) maintenu + A = comme F6 ; Select + B maintenus = abandonner
+  Manette : Select (Affichage) maintenu + A = comme F1 ; Select + B maintenus = abandonner
             (appuyez sur Select AVANT A ou B)
 
 Une invitation sans réponse est refusée au bout de 15 secondes.
@@ -49,7 +49,7 @@ DÉMARRAGE RAPIDE ET CLAVIER
   toutes seules. En AZERTY : Z Q S D pour rouler et diriger (au lieu de W A S D),
   comme dans les menus. Les flèches marchent toujours. Si la détection se trompe :
   KeyboardLayout = "azerty" (ou "qwertz", "qwerty" = touches d'origine du jeu)
-  dans Ovomium.cfg. Les touches F6 à F9, V et 1/2/3 sont les mêmes partout.
+  dans Ovomium.cfg. Les touches F1 à F4, V et 1/2/3 sont les mêmes partout.
 - Changer les touches d'Ovomium : RaceKey, StyleKey, PanelKey, EchoKey, CameraKey
   dans Ovomium.cfg (noms des touches d'Unity : F1…F12, V, Keypad1…).
 
@@ -75,9 +75,9 @@ RÉALITÉ VIRTUELLE (mod LMD-VR, à installer à part)
 --------------------------------------------------
 Ovomium fonctionne à côté du mod LMD-VR (casque OpenXR, Windows) :
 https://github.com/visual-gh/LMD-VR (installation : voir sa page).
-- LMD-VR prend F5, F6, F7, F9, F10, F11 : quand il est installé, les touches
-  d'Ovomium passent sur F1 course, F2 aspect, F3 panneau, F4 écho (un message
-  le rappelle au menu). Les combinaisons de manette ne changent pas.
+- LMD-VR prend F5, F6, F7, F9, F10, F11 : les touches d'Ovomium (F1 à F4, V)
+  ne les croisent pas. Si vous les avez changées et que l'une tombe sur LMD-VR,
+  un message le signale au menu.
 - Pendant la VR, V et R3 d'Ovomium sont coupés : la vue se change avec LMD-VR
   (F5, ou LB + RB + croix).
 - Le panneau des joueurs, les messages et l'affichage des courses ne sont pas
@@ -88,7 +88,7 @@ https://github.com/visual-gh/LMD-VR (installation : voir sa page).
 ÇA NE MARCHE PAS ?
 ------------------
 - Personne n'apparaît :
-  * Vérifiez que tout le monde a lancé l'installeur et le même Ovomium (F8 le dit).
+  * Vérifiez que tout le monde a lancé l'installeur et le même Ovomium (F3 le dit).
   * Pare-feu : relancez « Installer Ovomium » et répondez « Oui » à Windows.
     Si Windows demande d'autoriser le jeu sur le réseau : cochez « Réseaux privés »,
     puis « Autoriser l'accès ».

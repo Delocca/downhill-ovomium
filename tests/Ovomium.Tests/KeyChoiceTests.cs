@@ -2,34 +2,13 @@ using Ovomium.Core.Keys;
 
 namespace Ovomium.Tests;
 
-/// Touches effectives : réglage du joueur, défaut normal, défaut quand LMD-VR est installé, conflits.
+/// Conflits entre nos touches et celles de LMD-VR.
 public class KeyChoiceTests
 {
     [Fact]
-    public void SansLmdVr_ReglageGarde()
+    public void Defauts_SansConflit()
     {
-        Assert.Equal("F6", KeyChoice.Effective("F6", "F6", "F1", vrInstalled: false));
-        Assert.Equal("K", KeyChoice.Effective(" K ", "F6", "F1", vrInstalled: false));
-    }
-
-    [Fact]
-    public void AvecLmdVr_DefautRemplace()
-    {
-        Assert.Equal("F1", KeyChoice.Effective("F6", "F6", "F1", vrInstalled: true));
-        Assert.Equal("F1", KeyChoice.Effective("f6 ", "F6", "F1", vrInstalled: true)); // casse et espaces ignorés
-    }
-
-    [Fact]
-    public void AvecLmdVr_ReglagePersonnaliseGarde()
-    {
-        Assert.Equal("F12", KeyChoice.Effective("F12", "F6", "F1", vrInstalled: true));
-        Assert.Equal("F9", KeyChoice.Effective("F9", "F6", "F1", vrInstalled: true)); // même en conflit : choix du joueur
-    }
-
-    [Fact]
-    public void JeuVr_SansConflit()
-    {
-        // Jeu de touches retenu avec LMD-VR : F1 course, F2 aspect, F3 panneau, F4 écho, V vue.
+        // Touches par défaut d'Ovomium : F1 course, F2 aspect, F3 panneau, F4 écho, V vue.
         Assert.Empty(KeyChoice.VrConflicts(new[] { "F1", "F2", "F3", "F4", "V" }));
     }
 

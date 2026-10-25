@@ -82,7 +82,7 @@ function Show-Success([string]$Dir, [string]$MelonStatus) {
     $text = "Ovomium $($script:ModVersion) est installé !`n`nDossier du jeu : $Dir`nMelonLoader : $MelonStatus`n`n" +
         "Lancez le jeu depuis Steam, comme d'habitude.`n"
     if ($script:Notes.Count -gt 0) { $text += "`n" + ($script:Notes -join "`n`n") + "`n" }
-    $text += "`nEn jeu : F8 = joueurs connectés, F6 = lancer / rejoindre une course " +
+    $text += "`nEn jeu : F3 = joueurs connectés, F1 = lancer / rejoindre une course " +
         "(manette : Select + A). Voir LISEZ-MOI.txt.`n`nJournal : $($script:LogPath)"
     Show-Message $text 'Info'
 }
