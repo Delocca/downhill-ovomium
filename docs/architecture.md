@@ -1,6 +1,6 @@
 # Architecture de LmdMulti (v0.2 : fantômes réseau et mode course)
 
-Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son propre vélo ; les autres apparaissent comme des marionnettes sans collision, avec leur pseudo au-dessus. N'importe qui peut lancer une course (F6) : les autres reçoivent une invitation, la piste se charge toute seule chez ceux qui acceptent, départ commun après un compte à rebours, classement en direct et tableau final (voir « Mode course »).
+Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son propre vélo ; les autres apparaissent comme des marionnettes sans collision, avec leur pseudo au-dessus. N'importe qui peut lancer une course (F6, ou Select + A à la manette) : les autres reçoivent une invitation, la piste se charge toute seule chez ceux qui acceptent, départ commun après un compte à rebours, classement en direct et tableau final (voir « Mode course »).
 
 ## Dossiers
 
@@ -14,7 +14,7 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 | `src/LmdMulti/` | Le mod : `LmdMultiMod` (point d'entrée, relie tout), `Config` (MelonPreferences), `Log` |
 | `src/LmdMulti/Game/` | Lecture de l'état du jeu : piste en cours, nom de piste, pseudo Steam |
 | `src/LmdMulti/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
-| `src/LmdMulti/Race/` | Course côté jeu : `RaceController` (session, touches, réseau), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
+| `src/LmdMulti/Race/` | Course côté jeu : `RaceController` (session, commandes, réseau), `PadReader` (manette via Rewired), `RaceKeys` (noms des commandes à l'écran), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/LmdMulti/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications |
 | `src/LmdMulti/Diagnostics/` | Capture d'écran (F10), statistiques (réseau, images/s, coût du mod), relevé des os en mode `DebugLog`, `TestMode` (aucun résultat enregistré par le jeu pendant les tests) |
 | `tools/LmdBot/` | Faux joueur(s) en console (Linux) : orbite autour du joueur ou rejeu d'un .lmdrec, jusqu'à 64 dans un processus ; pair de course simulé (`RaceBot`) |
@@ -76,10 +76,20 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
 
 ## Mode course
 
-**Touches** (pas de configuration nécessaire) : **F6** « course » = lancer une course sur la piste où l'on est (ou celle sélectionnée au menu) / accepter une invitation / (hôte) partir sans attendre les retardataires / fermer les résultats. **F5** = refuser une invitation / (hôte) annuler avant le départ / abandonner (deux appuis en 3 s).
+**Commandes** (pas de configuration nécessaire ; logique dans `Core/Race/RaceButtons`, testée) :
+
+| Action | Clavier | Manette |
+|---|---|---|
+| Lancer une course sur la piste où l'on est (ou celle sélectionnée au menu) / accepter l'invitation / (hôte) partir sans attendre / fermer les résultats | **F6** (appui bref) | **Select** (View/Back) maintenu + **A** |
+| Abandonner / (hôte) annuler avant le départ | **F6 maintenu 1,5 s** | **Select + B maintenus 1,5 s** |
+| Refuser une invitation | rien : elle expire (15 s), le bandeau le dit | idem |
+
+- Anti-erreur : une jauge « Abandon… » (ou « Annulation de la course… ») se remplit au centre ; relâcher avant la fin ne fait rien. Une seule touche au clavier (plus de F5 à côté de F6) : quand seul « lancer » a un sens, F6 agit dès l'appui ; quand seul « abandonner » en a un, un appui bref affiche « Pour abandonner : F6 maintenu 1,5 s ».
+- Manette (`Race/PadReader`, via Rewired, la bibliothèque d'entrées du jeu, `game-api.md` § 9) : dans le jeu, A = sprint / valider, B = crash volontaire / retour, Back = pause en piste (comme Start). Le mod retire donc Back des cartes manette du jeu (en mémoire, Start met toujours en pause) et coupe les cartes manette tant que Select est tenu, jusqu'au relâchement de tous les boutons : le jeu ne voit ni le A ni le B des combinaisons (vérifié avec une manette virtuelle : A ne valide rien au menu, B ne crashe pas, Select n'ouvre pas la pause). Presser Select **avant** A ou B. Pendant la combinaison, direction et gaz sont coupés.
+- Les textes (bandeau, panneau de course, panneau des joueurs, jauge) affichent les commandes du dernier périphérique utilisé (`Race/RaceKeys` : manette selon Rewired, clavier dès qu'on touche F6).
 
 **Déroulé** (logique dans `Core/Race`, testée sans Unity ; `RaceTypes.RaceRules` pour les valeurs) :
-1. **Invitation** : celui qui appuie sur F6 devient l'hôte et invite tous les joueurs compatibles détectés (16 coureurs au plus). Bandeau central chez eux : hôte, piste, « F6 rejoindre · F5 refuser », 15 s pour répondre. Un joueur déjà en course refuse automatiquement.
+1. **Invitation** : celui qui appuie sur F6 devient l'hôte et invite tous les joueurs compatibles détectés (16 coureurs au plus). Bandeau central chez eux : hôte, piste, « F6 rejoindre » (ou « Select + A »), « sans réponse : refusée dans 15 s ». Un joueur déjà en course refuse automatiquement.
 2. **Chargement** : chez chaque coureur (hôte compris), `TrackLoader` amène au départ, d'où qu'il soit : même piste → « recommencer la tentative » ; autre piste → retour au menu ; écran titre → « commencer » ; puis sélection et lancement. Une piste verrouillée chez lui est ouverte temporairement (`TrackAccess`, voir `game-api.md` § 4). Une montagne non possédée (DLC) est refusée avec un message.
 3. **Attente** : vélo bloqué au départ (patch de `LockMovement(false)`) ; « prêt » 1,5 s après la disparition de l'écran de chargement. Chaque invité a 30 s depuis son acceptation pour être prêt, sinon il est exclu (« la course est partie sans toi »). L'hôte peut partir sans attendre (F6). Personne de prêt : course annulée.
 4. **Départ** : l'hôte fixe l'heure du départ dans son horloge (maintenant + 4,5 s), chacun la convertit dans la sienne grâce au décalage mesuré (`ClockSync`) ; « Prêts ? », puis 3-2-1 géant au centre, puis « GO ! » : déblocage du vélo. Mesuré en local : GO à 7-8 ms de l'heure prévue.
@@ -102,10 +112,12 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
   - **Course** (même logique que le mod, `RaceHost` / `RaceGuest`) : `--race join` accepte les invitations, « charge » `--race-load` s (3), roule `--race-time` s (25, +4 s par bot) en franchissant 7 checkpoints, `--race-dnf` abandonne à mi-course, `--race-decline` refuse. `--race host --race-track ID` lance une course (une fois) 3 s après avoir vu un vrai joueur. `--loss 0.3` jette 30 % des paquets émis. Les bots n'entendent que le jeu (pas les autres bots) : pour une course à plusieurs bots, c'est le jeu qui doit être l'hôte.
 - **Écran virtuel** (rendu complet sans toucher au bureau) : `tools/lmd-virtual.sh start|stop|shot`, puis `tools/lmd-keys.sh enter` (lance le jeu si besoin et entre dans la piste sélectionnée au clavier), `drive NOM IPS Up:1.3 Up+Left:0.8 …` (roule en filmant, planche d'images dans `/tmp/NOM-montage.png`), `restart`, `menu`, `key`, `shot`. Voir l'en-tête du script pour les touches du jeu.
 - **Session bureau** : `tools/desktop-session.sh` (déploie, lance, guide, nettoie ; journal dans `/tmp/lmd-session/`).
+- **Manette virtuelle** : `tools/lmd-pad.py ÉTAPE…` (ex. `back:0.4 back+a:0.3 none:0.3`) ou `--serve FICHIER` (garde la manette et joue les étapes écrites dans le fichier). « Xbox 360 » par uinput, sans root (`/dev/uinput` accessible à l'utilisatrice) ; le jeu la voit comme « XInput Gamepad 1 ». ⚠ visible de tout le système (Steam l'ouvre aussi ; sans effet tant que Steam Input est désactivé pour les manettes Xbox, ce qui est le cas ici).
+- **Vérification manette sur le bureau** : `tools/pad-check.sh` (mode test, bot qui accepte les courses, mode d'emploi, `i` = recevoir une invitation ; journal et résumé dans `/tmp/lmd-padcheck/`).
 
 ## Configuration
 
-Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 / `RaceQuitKey` F5 / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`, `TestMode` (tests seulement : le jeu n'enregistre aucun résultat, ni classements en ligne ou locaux, ni succès, stats, progression ; voir `game-api.md` § 5 « Arrivées de test » ; **obligatoire pour toute manche scriptée ou téléportée**).
+Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 (appui et maintien ; `RaceQuitKey` n'existe plus) / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`, `TestMode` (tests seulement : le jeu n'enregistre aucun résultat, ni classements en ligne ou locaux, ni succès, stats, progression ; voir `game-api.md` § 5 « Arrivées de test » ; **obligatoire pour toute manche scriptée ou téléportée**).
 
 ## Interface
 
@@ -135,4 +147,5 @@ Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
 - Windows : au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés).
 - Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; pseudos et affichage de course à 1080p et plus.
-- Course : un seul hôte coordonne ; s'il quitte le jeu, la course s'arrête chez les autres (« l'hôte a quitté »). Pas de manette pour les touches de course (clavier F5/F6).
+- Course : un seul hôte coordonne ; s'il quitte le jeu, la course s'arrête chez les autres (« l'hôte a quitté »).
+- Manette : boutons lus par leurs identifiants Xbox (XInput, ce que Proton présente pour la plupart des manettes) ; une manette reconnue autrement par Rewired (ex. DualShock en natif) pourrait avoir d'autres numéros. Manettes vues journalisées au démarrage (« manettes : … »). Vérifiée avec une manette virtuelle seulement (`tools/lmd-pad.py`) ; vérification avec une vraie manette : `tools/pad-check.sh`.

@@ -43,7 +43,7 @@ public class ExplorerMod : MelonMod
             _nextStatus = now + 2f;
             if (BikeProbe.Find() != null) Out.Info(Probes.StatusLine());
         }
-        // F11/F12 : F5-F10 sont prises par LmdMulti (course, aspect, panneau, écho, capture).
+        // F11/F12 : F6-F10 sont prises par LmdMulti (course, aspect, panneau, écho, capture).
         if (Input.GetKeyDown(KeyCode.F11)) Out.Try("F11", () => Commands.Run("dump"));
         if (Input.GetKeyDown(KeyCode.F12)) Out.Try("F12", () => Commands.Run("puppet"));
     }

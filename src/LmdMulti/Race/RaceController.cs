@@ -12,7 +12,7 @@ namespace LmdMulti.Race;
 /// participation côté jeu (RaceRun) et l'affichage (RaceHud). Une seule course à la fois.
 internal sealed class RaceController
 {
-    private const double ResultsShowMs = 30000, AbandonConfirmMs = 3000;
+    private const double ResultsShowMs = 30000;
     private static readonly Color Info = new(1f, 0.85f, 0.4f), Bad = new(1f, 0.55f, 0.45f);
 
     private readonly UdpNode _node;
@@ -20,7 +20,7 @@ internal sealed class RaceController
     private readonly RaceRun _run = new();
     private readonly System.Random _rng = new();
     private RacePhase _lastPhase;
-    private double _abandonArmedUntil, _resultsUntil;
+    private double _resultsUntil;
 
     public IRaceSession Session { get; private set; }
     public RaceRun Run => _run;
@@ -94,14 +94,32 @@ internal sealed class RaceController
         _ => null,
     };
 
-    /// F6 : accepter / lancer / partir sans attendre / fermer. F5 : refuser / annuler / abandonner.
+    /// Commandes (RaceButtons) : appui = accepter / lancer / partir sans attendre / fermer ;
+    /// maintien 1,5 s = abandonner / (hôte) annuler. Refuser une invitation = la laisser expirer.
     public void HandleKeys(double now, string myName)
     {
-        if (Input.GetKeyDown(Config.Key(Config.RaceKey))) OnRaceKey(now, myName);
-        if (Input.GetKeyDown(Config.Key(Config.RaceQuitKey))) OnQuitKey(now);
+        _pad.Update(now);
+        var state = new RaceButtonState(Input.GetKey(Config.Key(Config.RaceKey)), _pad.Back, _pad.A, _pad.B);
+        RaceKeys.Track(state.Key, state.PadModifier, _pad.LastWasPad);
+        switch (Buttons.Update(state, now, CanGo(now), CanQuit))
+        {
+            case RaceCommand.Go: OnGo(now, myName); break;
+            case RaceCommand.Quit: OnQuit(now); break;
+            case RaceCommand.HoldHint: _toasts.Show($"Pour abandonner : {RaceKeys.Quit} 1,5 s", Info, "race"); break;
+        }
     }
 
-    private void OnRaceKey(double now, string myName)
+    public RaceButtons Buttons { get; } = new();
+    private readonly PadReader _pad = new();
+    /// Le maintien en cours annulerait la course (hôte, avant le départ) plutôt qu'abandonner.
+    public bool HoldCancels => Session is RaceHost { View.Phase: RacePhase.Gathering };
+
+    private bool CanGo(double now) => Session == null || !Busy || ResultsVisible(now)
+        || Session is RaceGuest { IsPending: true } || Session is RaceHost { View.Phase: RacePhase.Gathering };
+
+    private bool CanQuit => Session != null && !Session.View.IsOver && Session.Me != null && Session.Me.IsActive;
+
+    private void OnGo(double now, string myName)
     {
         if (Session is RaceGuest g && g.IsPending)
         {
@@ -130,22 +148,12 @@ internal sealed class RaceController
         _toasts.Show($"Course sur {GameInfo.TrackName(track)} : {host.InvitedCount} joueur(s) invité(s)", Info, "race");
     }
 
-    private void OnQuitKey(double now)
+    private void OnQuit(double now)
     {
-        if (Session == null) return;
-        if (Session is RaceGuest g && g.IsPending) { g.Decline(); return; }
-        if (ResultsVisible(now)) { _resultsUntil = 0; return; }
         if (Session is RaceHost h && h.View.Phase == RacePhase.Gathering)
         {
             h.Cancel(CancelReason.HostCancelled);
             _toasts.Show("Course annulée", Info, "race");
-            return;
-        }
-        if (Session.View.IsOver || Session.Me == null || !Session.Me.IsActive) return;
-        if (now > _abandonArmedUntil)
-        {
-            _abandonArmedUntil = now + AbandonConfirmMs;
-            _toasts.Show($"Appuie encore sur {Config.RaceQuitKey.Value} pour abandonner", Info, "race");
             return;
         }
         Session.Abandon(now);
@@ -153,10 +161,11 @@ internal sealed class RaceController
         _toasts.Show("Tu as abandonné", Bad, "race");
     }
 
-    /// Départ du mod (fermeture du jeu) : abandon propre.
+    /// Départ du mod (fermeture du jeu) : abandon propre, cartes manette rétablies.
     public void Shutdown(double now)
     {
         if (Session != null && !Session.View.IsOver) Session.Abandon(now);
         _run.End();
+        _pad.Unmute();
     }
 }

@@ -15,7 +15,7 @@ internal static class Config
     public static MelonPreferences_Entry<int> Port;
     public static MelonPreferences_Entry<string> ManualPeers;
     public static MelonPreferences_Entry<string> Nickname;
-    public static MelonPreferences_Entry<string> PanelKey, EchoKey, CaptureKey, StyleKey, RaceKey, RaceQuitKey;
+    public static MelonPreferences_Entry<string> PanelKey, EchoKey, CaptureKey, StyleKey, RaceKey;
     public static MelonPreferences_Entry<bool> ShowPanel;
     public static MelonPreferences_Entry<bool> EchoMode;
     public static MelonPreferences_Entry<float> EchoDelaySeconds;
@@ -36,8 +36,7 @@ internal static class Config
         Port = c.CreateEntry("Port", 47700, description: "Port UDP (le même pour tous les joueurs)");
         ManualPeers = c.CreateEntry("ManualPeers", "", description: "IP des joueurs hors réseau local (Tailscale…), séparées par des virgules, ex. \"100.64.0.2, 100.64.0.3:47701\"");
         Nickname = c.CreateEntry("Nickname", "", description: "Pseudo affiché ; vide = pseudo Steam");
-        RaceKey = c.CreateEntry("RaceKey", "F6", description: "Touche course : lancer une course sur ta piste / accepter une invitation / (hôte) partir sans attendre / fermer les résultats");
-        RaceQuitKey = c.CreateEntry("RaceQuitKey", "F5", description: "Touche course : refuser une invitation / (hôte) annuler avant le départ / abandonner (deux appuis)");
+        RaceKey = c.CreateEntry("RaceKey", "F6", description: "Touche course. Appui : lancer une course sur ta piste / accepter une invitation / (hôte) partir sans attendre / fermer les résultats. Maintenue 1,5 s : abandonner / (hôte) annuler. Manette : Select + A, Select + B maintenus");
         PanelKey = c.CreateEntry("PanelKey", "F8", description: "Touche : afficher/masquer le panneau des joueurs");
         EchoKey = c.CreateEntry("EchoKey", "F9", description: "Touche : activer/couper le mode écho");
         StyleKey = c.CreateEntry("StyleKey", "F7", description: "Touche : changer l'aspect des fantômes (GhostStyle)");

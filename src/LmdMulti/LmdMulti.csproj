@@ -30,6 +30,7 @@
     <Reference Include="$(RefsDir)Assembly-CSharp.dll" Private="false" />
     <Reference Include="$(RefsDir)Il2CppMegagon.Framework.dll" Private="false" />
     <Reference Include="$(RefsDir)Il2CppFacepunch.Steamworks.Win64.dll" Private="false" />
+    <Reference Include="$(RefsDir)Il2CppRewired_Core.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="$(RefsDir)UnityEngine.PhysicsModule.dll" Private="false" />

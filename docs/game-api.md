@@ -172,6 +172,16 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 - Menus depuis l'écran titre : six fois Entrée (titre, Commencer la partie, montagne, piste, défi, vélo) lancent la piste sélectionnée. La caméra et la direction du clavier suivent le vélo.
 - Recette de conduite sur Sierra Rivera piste 2 (`CA_01_A2`), départ : Haut 1,3 s, Haut+Gauche 0,8 s, Haut 1,5 s tient la piste environ 5 s avant une chute (`tools/lmd-keys.sh drive …`).
 
+## 9. Manette (Rewired)
+
+Le jeu lit clavier et manettes par **Rewired** (`Il2CppRewired_Core.dll`). Lu dans l'objet `Rewired.InputManager` du bundle `StreamingAssets/AssetBundles/resources/generic` (UnityPy, 2026-10-25) ; comportements marqués [vérifié] observés avec une manette virtuelle Xbox 360 (`tools/lmd-pad.py`) sur l'écran virtuel.
+
+- Joueur `ReInput.players.GetPlayer(0)` (« Player0 »). Catégories de cartes : 0 Menu (toujours active), 2 GamePlay ; dispositions GamePlay 6 / 8 / 9 selon le préréglage manette du jeu. Pas de remappage utilisateur sauvegardé (préréglages seulement, dans `data_settings.sav`) : modifier les cartes en mémoire est sans lendemain.
+- Identifiants d'éléments Xbox 360/One : boutons 6 A, 7 B, 8 X, 9 Y, 10 LB, 11 RB, 12 Back/View, 13 Start, 14 L3, 15 R3, 16-19 croix, 22 Guide ; axes 0-3 sticks, 4 LT, 5 RT. Proton présente la manette comme « XInput Gamepad 1 » (GUID d74a350e…, 360) [vérifié].
+- Rôles (lus) : A = Boost + Sprint en piste, UI_Submit au menu (aussi « recommencer » après une chute [vérifié]) ; B = Suicide (crash volontaire, raison `ExternalTrigger` [vérifié]) en piste, UI_Cancel au menu ; Back = UI_Cancel (pause) en piste, rien au menu ; Start = UI_Cancel ; X/Y = UI_Action_1/2 ; LB frein (disposition 6) ou capture ; L3/R3 pages des classements. Écran de résultats : A continuer, B « continuer à rouler », Y recommencer.
+- API utilisée par LmdMulti (`Race/PadReader`) : `ReInput.isReady` ; `player.controllers.Joysticks` / `joystickCount` ; `joy.GetButton(joy.GetButtonIndexById(id))` (`GetButtonById` et les gabarits `IGamepadTemplate` sont absents de l'interop) ; `player.controllers.GetLastActiveController().type` (`ControllerType.Joystick` = 2) pour savoir quel périphérique a servi en dernier [vérifié] ; `player.controllers.maps.GetAllMaps(Il2CppSystem…List<ControllerMap>)`, `map.ButtonMaps` (`ActionElementMap.elementIdentifierId`, `.id`), `map.DeleteElementMap(id)` et `map.enabled` [vérifié : Back retiré, cartes coupées puis rétablies]. Le jeu recharge ses cartes plusieurs fois au démarrage (profil, menus) : le retrait est refait chaque seconde.
+- Input legacy d'Unity (`Input.GetKey(KeyCode.JoystickButtonN)`) : actif aussi, mais numérotation dépendante du backend : non utilisé.
+
 ## Limites des tests et besoins
 
 - **Solution retenue (2026-10-25) : rendu complet sur écran virtuel Xorg « dummy »**. Commandes : `tools/lmd-virtual.sh start|stop|shot` (`:98`, DXVK sur la NVIDIA, config `tools/xdummy.conf`, paquet `xserver-xorg-video-dummy`). Le dummy annonce 60 Hz, ce qui évite le plantage de DXVK. Rendu, menus et conduite au clavier vérifiés (`tools/lmd-keys.sh`), 110-150 images/s en 640×480 (pas de synchro verticale). Pour voir en direct : `tools/watch-virtual.sh`. Ce qui suit est l'historique avant cette solution.
@@ -195,6 +205,6 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 Mod explorateur : `src/LmdExplorer`.
 - Commandes : une par ligne dans `UserData/LmdExplorer/cmd.txt` ou `/tmp/lmdexplorer-cmd.txt`.
 - Liste : `dump`, `status`, `puppet`, `screens`, `mainstart`, `start`, `menu`, `catalogue`, `sel`, `select <ID>`, `restart`, `restartcp`, `lock`, `unlock`, `tostart`, `tocp [N|gN|f]` (respawn du checkpoint N, porte N, ligne d'arrivée), `timer`, `record <piste>` (records locaux), `call <Type> <Méthode> [args]`.
-- Touches : F11 dump, F12 marionnette de test (F5-F10 sont à LmdMulti).
+- Touches : F11 dump, F12 marionnette de test (F6-F10 sont à LmdMulti).
 - Fichiers drapeaux : `autostart` lance la piste sélectionnée depuis le menu ; `autodump` fait dump + marionnette de test à la première apparition du vélo.
 - ⚠ Une arrivée obtenue par téléportation peut être enregistrée par le jeu (records, classements en ligne, succès) : voir § 5 « Arrivées de test » avant tout essai : toujours avec LmdMulti en `TestMode`.

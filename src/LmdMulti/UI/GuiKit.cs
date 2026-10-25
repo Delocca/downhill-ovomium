@@ -46,6 +46,23 @@ internal static class GuiKit
 
     public static void Panel(Rect r) => GUI.DrawTexture(r, _dark);
 
+    private static Texture2D _white;
+
+    /// Rectangle plein de la couleur donnée (jauges).
+    public static void Fill(Rect r, Color c)
+    {
+        if (_white == null)
+        {
+            _white = new Texture2D(1, 1);
+            _white.SetPixel(0, 0, Color.white);
+            _white.Apply();
+        }
+        var old = GUI.color;
+        GUI.color = c;
+        GUI.DrawTexture(r, _white);
+        GUI.color = old;
+    }
+
     /// « RRGGBB » pour les balises <color> (ColorUtility.ToHtmlStringRGB : « unstripping failed » dans cette build).
     public static string Hex(Color c) =>
         $"{(int)(Mathf.Clamp01(c.r) * 255):X2}{(int)(Mathf.Clamp01(c.g) * 255):X2}{(int)(Mathf.Clamp01(c.b) * 255):X2}";

@@ -52,6 +52,30 @@ internal static class RaceHud
         DrawPanel(s, now);
         DrawCountdown(v, now);
         DrawMyFinish(s, c.Run.FinishedAtMs, now);
+        DrawHold(c);
+    }
+
+    // ---- Jauge « maintenir pour abandonner / annuler » (anti-erreur) ----
+
+    private static void DrawHold(RaceController c)
+    {
+        float p = (float)c.Buttons.HoldProgress;
+        if (p < 0.15f) return; // appui bref : pas de jauge qui clignote
+        float w = Mathf.Min(Screen.width * 0.6f, 420 * S), barH = 16 * S, pad = 12 * S;
+        float x = (Screen.width - w) / 2, y = Screen.height * 0.6f, titleH = _title.lineHeight * 1.2f;
+        GuiKit.Panel(new Rect(x - pad, y - pad, w + pad * 2, titleH + barH + _row.lineHeight + pad * 2.5f));
+        string title = c.HoldCancels ? "Annulation de la course…" : "Abandon…";
+        var old = _title.alignment;
+        _title.alignment = TextAnchor.UpperCenter;
+        GuiKit.Shadowed(new Rect(x, y, w, titleH), title, _title, DnfRed);
+        _title.alignment = old;
+        float by = y + titleH;
+        GuiKit.Fill(new Rect(x, by, w, barH), new Color(1f, 1f, 1f, 0.18f));
+        GuiKit.Fill(new Rect(x, by, w * p, barH), DnfRed);
+        var hint = new Rect(x, by + barH + 4 * S, w, _row.lineHeight);
+        _row.alignment = TextAnchor.UpperCenter;
+        GuiKit.Shadowed(hint, "relâche pour garder la course", _row, Grey);
+        _row.alignment = TextAnchor.UpperLeft;
     }
 
     // ---- Invitation : bandeau central, impossible à rater, touches bien visibles ----
@@ -59,7 +83,7 @@ internal static class RaceHud
     private static void DrawInvite(RaceGuest g, double now)
     {
         int left = Mathf.Max(0, Mathf.CeilToInt((float)((g.InviteExpiresAtMs - now) / 1000)));
-        string keys = $"<b><color=#9fe870>{Config.RaceKey.Value}</color></b> rejoindre     <b><color=#ff8c78>{Config.RaceQuitKey.Value}</color></b> refuser     <color=#aaaaaa>{left} s</color>";
+        string keys = $"<b><color=#9fe870>{RaceKeys.Go}</color></b> rejoindre     <color=#aaaaaa>sans réponse : refusée dans {left} s</color>";
         var lines = new[]
         {
             (Esc(g.View.HostName) + " lance une course", _big, Gold),
@@ -150,9 +174,8 @@ internal static class RaceHud
 
     private static string Hints(IRaceSession s)
     {
-        string go = Config.RaceKey.Value, quit = Config.RaceQuitKey.Value;
-        if (s.View.Phase == RacePhase.Gathering && s.IsHost) return $"{go} partir sans attendre · {quit} annuler";
-        if (s.Me.IsActive) return $"{quit} ×2 abandonner";
+        if (s.View.Phase == RacePhase.Gathering && s.IsHost) return $"{RaceKeys.Go} partir sans attendre · {RaceKeys.Quit} annuler";
+        if (s.Me.IsActive) return $"{RaceKeys.Quit} abandonner";
         return "";
     }
 
@@ -193,7 +216,7 @@ internal static class RaceHud
             if (e.State == RacerState.Finished) left = $"{pos}." + left.Substring(left.IndexOf(' '));
             lines.Add((left, right, _row));
         }
-        lines.Add(($"<size={(int)(13 * S)}><color=#aaaaaa>{Config.RaceKey.Value} fermer</color></size>", "", _row));
+        lines.Add(($"<size={(int)(13 * S)}><color=#aaaaaa>{RaceKeys.Go} fermer</color></size>", "", _row));
         float w = Mathf.Min(Screen.width * 0.9f, 460 * S);
         // Milieu d'écran : en haut, l'écran de résultats du jeu affiche titre et défis.
         DrawTable(lines, (Screen.width - w) / 2, Screen.height * 0.36f, w);
