@@ -46,7 +46,7 @@ public class ExplorerMod : MelonMod
             _nextStatus = now + 2f;
             if (BikeProbe.Find() != null) Out.Info(Probes.StatusLine());
         }
-        // F11/F12 : F6-F9 sont prises par Ovomium (course, aspect, panneau, écho), F10 par la capture du jeu.
+        // F11/F12 : F1-F4 sont prises par Ovomium (course, aspect, panneau, écho), F10 par la capture du jeu.
         if (Input.GetKeyDown(KeyCode.F11)) Out.Try("F11", () => Commands.Run("dump"));
         if (Input.GetKeyDown(KeyCode.F12)) Out.Try("F12", () => Commands.Run("puppet"));
     }
