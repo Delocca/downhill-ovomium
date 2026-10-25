@@ -46,7 +46,8 @@ Hiérarchie vérifiée sous `Bike(Clone)` :
   - `bike_ragDoll_guy` : corps physiques `Rigidbody`/`Joint` sur `spine_1`, `hip`, `knee`, `neck`, `shoulder`, `elbow`, `hand` ;
   - `bike_ragDoll_bike` : `bike_front` et `bike_rear` ;
   - `bike/Bind_JNT/…` : même arborescence et mêmes noms d'os que le vélo, pilotée par des `ParentConstraint` (Megagon.Framework).
-- Pendant un crash, envoyer donc les os de `RagDoll(Clone)/bike/Bind_JNT` (même format) [déduit].
+- Pendant un crash, envoyer donc les os de `RagDoll(Clone)/bike/Bind_JNT` (même format) : fait par LmdMulti, les 31 os sont trouvés dans les deux arbres et `RagDoll(Clone).activeInHierarchy` bascule bien au crash [vérifié, batchmode].
+- Os qui translatent (positions locales qui varient, relevé LmdMulti `DebugLog`, vélo bloqué au départ en batchmode) : `cog` 27 cm, `spine_1` 64 cm, `hand_L` 20 cm, `hand_R` 3 cm (IK des mains) [vérifié] ; en roulant : à relever en session bureau.
 - Enum `CrashReason` : NoCrash=0, LostControl=1, OutOfBounds=10, ObstacleHit=11, ExternalTrigger=12, Water=13, ObstacleRock=14, ObstacleTree=15, ObstacleCactus=16, Lava=19, FallHeight=20, FallTime=21, ExtremSlope=22, BottomOut=23, BackwardMovement=24, FallImpact=25, HardSlide=26, Unknown=99 [signatures].
 
 ## 3. Marionnette (fantôme visuel)
@@ -61,7 +62,9 @@ Méthode vérifiée (pas d'exception, hiérarchie conforme ; **rendu non vu**) :
 - 121 transforms appariés par position dans l'arbre, ce qui permet de recopier la pose.
 - Code : `src/LmdExplorer/PuppetTest.cs`.
 - Limite : la copie a l'apparence (skin) du joueur local. Pour l'apparence de chaque joueur, transmettre son profil (voir § 6 `GameProperties.ActiveRider*`) et le reconstruire. La fabrique existe (`ObjectPublicLi1CoHaFaHeBaSiReSiUnique`, méthodes `GameObject …(VehicleConfiguration, List<ColorizedMesh>…, HairType, …)`) [signatures], mais elle n'a pas été testée.
-- Lumières : la copie garde les `Light` des phares (groupe `lights`, inactif de jour). À retirer ou à laisser suivre l'état.
+- Lumières : la copie garde les `Light` des phares (groupe `lights`, inactif de jour). LmdMulti désactive ce groupe sur ses marionnettes.
+- Matériaux : vélo + rider = un seul `SkinnedMeshRenderer` `mergedMesh`, matériau `bike (Instance)`, shader `Megagon/Standard VertexColor Simple` (propriétés `_Color`, `_MainTex`, `_Glossiness`, `_Metallic`, `_UV_GLOSSY`, `_EMISSIVE`, `_EmissiveColor`, `_EmissiveTex`) ; cheveux idem. En batchmode, `Material.HasProperty("_Color")` répond faux alors que `shader.FindPropertyIndex("_Color")` le trouve [vérifié].
+- LmdMulti pilote ses marionnettes ainsi (racine + `Bind_JNT` en monde, os en local) ; la position relue dans Unity correspond à la pose visée, crash compris [vérifié, batchmode] ; rendu : non vu.
 
 ## 4. Pistes : identification et chargement automatique
 
@@ -142,6 +145,11 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 - **Rendu sous Xvfb impossible** : le jeu reste bloqué à la 1re frame (« Loading Addons... », écran noir).
   - Observé avec et sans MelonLoader, dans et hors du bac à sable, et avec `runInBackground` forcé.
   - Selon winedbg, le fil principal tourne en boucle dans la player loop.
+- **Essai DXVK + bureau virtuel Wine** (2026-10-25, abandonné après 15 min) : `proton run explorer /desktop=LMD,1024x768 Z:\…\LMD_Win_x64.exe` sans `PROTON_USE_WINED3D`.
+  - Passe l'étape qui plantait (division par zéro dans dxgi) : `Renderer: NVIDIA GeForce RTX 2050`, Enlighten initialisé, mods chargés.
+  - Puis le jeu meurt sans message (Player.log coupé) : `WINEDEBUG=+seh` montre un `EXCEPTION_ACCESS_VIOLATION` (lecture en 0xFFFFFFFFFFFFFFFF) pendant le déroulement d'exceptions C++ ; cause non trouvée.
+  - Xvfb annonce 0 Hz et refuse d'ajouter un mode (`xrandr --newmode` accepté, `--addmode` : « cannot find mode »).
+  - Pièges : un `wineserver` resté d'un lancement précédent (Xvfb arrêté entre-temps) fait échouer le suivant (« no driver could be loaded ») : `WINEPREFIX=<pfx> "<Proton>/files/bin/wineserver" -k` avant de relancer.
 - **Contournement retenu** : `LMD_ARGS="-batchmode -nographics" tools/lmd-xvfb.sh start`.
   - Menus, profil, chargement de pistes, vélo et ragdoll fonctionnent : tout ce qui est marqué [vérifié] l'a été ainsi.
   - En revanche, le sol n'a pas de collision dans ce mode : au déblocage, le vélo tombe et crashe (`FallTime`).

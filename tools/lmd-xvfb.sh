@@ -29,6 +29,8 @@ start() {
 
 stop() {
     pkill -f "[L]MD_Win_x64.exe"
+    # wineserver resté vivant après l'arrêt de Xvfb : le lancement suivant échouerait (« no driver »)
+    WINEPREFIX="$HOME/.local/share/Steam/steamapps/compatdata/711540/pfx" "$(dirname "$PROTON")/files/bin/wineserver" -k 2>/dev/null
     pkill -f "[X]vfb $DISP"
     echo "arrêté"
 }
