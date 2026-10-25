@@ -1,0 +1,163 @@
+#!/bin/bash
+# LmdMulti pour Linux / Steam Deck (jeu Windows lancé par Proton). Sans sudo.
+#   bash install-linux.sh             installe (ou met à jour)
+#   bash install-linux.sh uninstall   désinstalle
+# Ce que fait l'installation : copie MelonLoader + LmdMulti.dll dans le dossier du jeu, puis
+# règle la DLL « version » en « native,builtin » dans le registre du préfixe Proton du jeu
+# (compatdata/711540/pfx/user.reg, copie de sauvegarde à côté), pour que Wine charge MelonLoader.
+# Variables de test : LMDMULTI_STEAM_ROOTS (dossiers Steam séparés par « : »),
+# LMDMULTI_SKIP_RUNNING_CHECK=1, LMDMULTI_ANSWER=o|n (réponse aux questions sans terminal),
+# LMDMULTI_NO_TRASH=1 (supprimer au lieu de mettre à la corbeille).
+set -euo pipefail
+
+APP_ID=711540
+EXE=LMD_Win_x64.exe
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PAYLOAD="$HERE/fichiers"
+
+say() { printf '%s\n' "$*"; }
+die() { printf '\nERREUR : %s\n' "$*" >&2; exit 1; }
+
+ask() { # ask "question" défaut(o|n) → 0 si oui
+    local answer="${LMDMULTI_ANSWER:-}"
+    if [[ -z "$answer" && -t 0 ]]; then
+        read -r -p "$1 [o/n, défaut $2] " answer || true
+    fi
+    answer="${answer:-$2}"
+    say "  -> $answer"
+    [[ "$answer" =~ ^[oOyY] ]]
+}
+
+remove_path() { # corbeille si possible
+    [[ -e "$1" ]] || return 0
+    if [[ -z "${LMDMULTI_NO_TRASH:-}" ]] && command -v gio >/dev/null && gio trash "$1" 2>/dev/null; then
+        say "  corbeille : $1"
+    else rm -rf -- "$1"; say "  supprimé : $1"; fi
+}
+
+steam_roots() {
+    if [[ -n "${LMDMULTI_STEAM_ROOTS:-}" ]]; then tr ':' '\n' <<<"$LMDMULTI_STEAM_ROOTS"; return; fi
+    printf '%s\n' "$HOME/.steam/steam" "$HOME/.local/share/Steam" \
+        "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam" "$HOME/snap/steam/common/.local/share/Steam"
+}
+
+libraries() { # bibliothèques Steam (dossier Steam + libraryfolders.vdf), sans doublons
+    local root
+    while read -r root; do
+        [[ -d "$root/steamapps" ]] || continue
+        printf '%s\n' "$root"
+        local vdf="$root/steamapps/libraryfolders.vdf"
+        [[ -f "$vdf" ]] && sed -n 's/^[[:space:]]*"path"[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$vdf"
+    done < <(steam_roots) | while read -r lib; do
+        [[ -d "$lib" ]] && realpath "$lib"
+    done | awk '!seen[$0]++'
+}
+
+find_game() { # écrit LIB et GAME
+    local lib acf dir
+    while read -r lib; do
+        acf="$lib/steamapps/appmanifest_$APP_ID.acf"
+        [[ -f "$acf" ]] || continue
+        dir=$(sed -n 's/^[[:space:]]*"installdir"[[:space:]]*"\(.*\)".*/\1/p' "$acf" | head -n1)
+        if [[ -f "$lib/steamapps/common/$dir/$EXE" ]]; then
+            LIB="$lib"; GAME="$lib/steamapps/common/$dir"; return 0
+        fi
+    done < <(libraries)
+    return 1
+}
+
+check_closed() {
+    [[ "${LMDMULTI_SKIP_RUNNING_CHECK:-}" == 1 ]] && return 0
+    if pgrep -f "$EXE" >/dev/null; then die "le jeu est ouvert : quitte-le puis relance ce script."; fi
+}
+
+# Override « version » dans user.reg : set (ajoute/remplace) ou unset (retire).
+set_override() {
+    local reg="$LIB/steamapps/compatdata/$APP_ID/pfx/user.reg" mode="$1"
+    if [[ ! -f "$reg" ]]; then
+        say "  Préfixe Proton absent ($reg)."
+        [[ "$mode" == set ]] && say "  -> Lance le jeu une fois sans mod, quitte-le, puis relance ce script." \
+            "Ou, dans Steam : Propriétés du jeu → Options de lancement : WINEDLLOVERRIDES=\"version=n,b\" %command%"
+        return 0
+    fi
+    [[ -f "$reg.lmdmulti-sauvegarde" ]] || cp -p "$reg" "$reg.lmdmulti-sauvegarde"
+    local tmp
+    tmp=$(mktemp "$reg.XXXXXX")
+    awk -v mode="$mode" '
+        BEGIN { section = "[Software\\\\Wine\\\\DllOverrides]"; line = "\"version\"=\"native,builtin\"" }
+        index($0, section) == 1 { inside = 1; found = 1; print; next }
+        inside && /^\[/ { if (mode == "set" && !done) { print line; done = 1 } inside = 0 }
+        inside && /^"version"=/ { if (mode == "set" && !done) { print line; done = 1 } next }
+        inside && /^$/ && mode == "set" && !done { print line; done = 1 }
+        { print }
+        END {
+            if (inside && mode == "set" && !done) print line
+            if (!found && mode == "set") { print ""; print section; print line }
+        }' "$reg" >"$tmp"
+    mv "$tmp" "$reg"
+    say "  user.reg : override version → $mode ($reg)"
+}
+
+other_mods() {
+    find "$GAME/Mods" "$GAME/Plugins" -name '*.dll' ! -name 'LmdMulti.dll' 2>/dev/null || true
+}
+
+install_melon() {
+    local want="$PAYLOAD/melonloader"
+    if [[ ! -e "$GAME/version.dll" && ! -d "$GAME/MelonLoader" ]]; then
+        cp -r "$want/." "$GAME/"; say "MelonLoader : installé"; return
+    fi
+    if cmp -s "$want/version.dll" "$GAME/version.dll" &&
+        cmp -s "$want/MelonLoader/net6/MelonLoader.dll" "$GAME/MelonLoader/net6/MelonLoader.dll"; then
+        say "MelonLoader : déjà à jour"; return
+    fi
+    say "Ce jeu a déjà une autre version de MelonLoader (ou un autre version.dll)."
+    [[ -n "$(other_mods)" ]] && say "Autres mods présents : ils pourraient ne plus marcher." && other_mods
+    if ask "Remplacer par la version fournie (prévue pour LmdMulti) ?" o; then
+        remove_path "$GAME/version.dll"; remove_path "$GAME/MelonLoader"
+        cp -r "$want/." "$GAME/"; say "MelonLoader : remplacé"
+    else
+        say "MelonLoader : gardé (LmdMulti risque de ne pas marcher)"
+    fi
+}
+
+do_install() {
+    [[ -f "$PAYLOAD/LmdMulti.dll" ]] || die "fichiers manquants : extrais tout le zip."
+    install_melon
+    mkdir -p "$GAME/Mods"
+    cp "$PAYLOAD/LmdMulti.dll" "$GAME/Mods/LmdMulti.dll"
+    say "Mod copié : $GAME/Mods/LmdMulti.dll"
+    [[ -f "$GAME/UserData/LmdMulti.cfg" ]] && say "Réglages existants gardés : $GAME/UserData/LmdMulti.cfg"
+    set_override set
+    say "" "Installé ! Lance le jeu depuis Steam." \
+        "Premier lancement LONG (2 à 10 min, fenêtre noire de MelonLoader) : c'est normal, ne ferme rien." \
+        "En jeu : F8 = joueurs, F6 = course (manette : Select + A). Voir LISEZ-MOI.txt."
+}
+
+do_uninstall() {
+    remove_path "$GAME/Mods/LmdMulti.dll"
+    if [[ -n "$(other_mods)" ]]; then
+        say "MelonLoader gardé : d'autres mods s'en servent."
+    elif [[ -e "$GAME/version.dll" || -d "$GAME/MelonLoader" ]] &&
+        ask "Aucun autre mod : retirer aussi MelonLoader ?" o; then
+        remove_path "$GAME/version.dll"; remove_path "$GAME/MelonLoader"
+        local d; for d in Mods Plugins UserLibs; do rmdir "$GAME/$d" 2>/dev/null || true; done
+        set_override unset
+    fi
+    say "" "LmdMulti est désinstallé. Tes réglages restent dans $GAME/UserData."
+}
+
+main() {
+    local action="${1:-install}"
+    LIB="" GAME=""
+    find_game || die "Lonely Mountains: Downhill introuvable dans les bibliothèques Steam."
+    say "Jeu : $GAME"
+    check_closed
+    case "$action" in
+        install) do_install ;;
+        uninstall) do_uninstall ;;
+        *) die "action inconnue : $action (install ou uninstall)" ;;
+    esac
+}
+
+main "$@"
