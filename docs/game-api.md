@@ -117,7 +117,7 @@ Pièges :
 | Restart complet | `Resources.FindObjectsOfTypeAll<PauseScreen>()[0].OnRestartRun()` (re-spawn + lock) ; `OnRestartCheckpoint()` existe aussi | [vérifié] / [signatures] |
 | Vélo contrôlable | `Manager<PlayManager>.prop_T_0.field_Private_Boolean_0` (vrai après l'intro, faux en crash ; d'après LMD-Custom-Rides) | [déduit] |
 | Tracker de manche | `HighscoreManager.prop_ObjectPublicBoGaObInSiStObDi2LiUnique_0` (voir détail ci-dessous) | lecture [vérifié] |
-| Section franchie | patch de `tracker.Method_Public_Void_Int32_Single_PDM_0(int section, float temps)` : section = 1, 2… (la ligne d'arrivée compte pour la dernière), temps de la section en s ; précédé de `TrackCheckpoint.Method_Public_Virtual_Void_Int32_Boolean_0` | [vérifié] |
+| Section franchie | patch de `tracker.Method_Public_Void_Int32_Single_PDM_0(int section, float temps)` : section = index du checkpoint − 1 (0 au premier après le départ, la ligne d'arrivée = la dernière), temps de la section en s ; c'est aussi « SubmitTimeForSection » qui **envoie le temps de section aux classements** ; précédé de `TrackCheckpoint.Method_Public_Virtual_Void_Int32_Boolean_0` | [vérifié] |
 | Arrivée | patch de `tracker.Method_Public_Void_PDM_0()`, appelé une fois au franchissement de la ligne (après la dernière section) | [vérifié] |
 | Porte d'un checkpoint | `cp.transform` porte un `BoxCollider` trigger d'environ 9 × 7 × 11 m ; y téléporter le vélo (après le premier appui) déclenche section ou arrivée. Le `m_spawnTransform` est à côté de la porte : y téléporter ne déclenche rien et affiche « point de contrôle manqué » au suivant | [vérifié] |
 | Chrono affiché | `FindObjectOfType<PlayScreen>().m_timePanelText.text` (« 0.00 ») | [vérifié] |
@@ -128,6 +128,16 @@ Détail du tracker de manche :
 - Le chrono du jeu (et sa manche) ne démarre qu'au premier appui du joueur.
 
 Choix de LmdMulti : chrono et classement calculés par le mod (départ commun = fin de son compte à rebours) ; sections et arrivée par patchs du tracker.
+
+### Arrivées de test : ce que le jeu enregistre, et comment l'empêcher
+
+Chaîne trouvée par désassemblage (2026-10-25 ; [asm] sauf mention) :
+- **À chaque checkpoint** (pas seulement à l'arrivée), `PlayManager.Method_Private_Void_PDM_25` appelle `tracker.Method_Public_Void_Int32_Single_PDM_0` (« SubmitTimeForSection » : temps de section vers les classements), `StatisticManager.Method_Public_Static_Void_PDM_1` (stats) et `AnalyticsReporter.Method_Public_Static_Void_PDM_0` (GameAnalytics). À l'arrivée, en plus : `HighscoreManager.Method_Public_Static_Void_PDM_0` → tracker « Finish » (temps total vers les classements, `ProgressionDB` → objectifs), puis `AchievementManager.Method_Public_Static_Void_PDM_0` (succès Steam via `Il2CppSteamworks.Data.Achievement.Trigger`).
+- **Classements** : pas ceux de Steam (absents de la build) mais le serveur HTTP de Megagon (`Il2CppMegagon.Platforms.LeaderboardRequests.ScoreRequests.SetScores`, réponse `newHighscore`), plus les records locaux du profil. Tous les temps (total et sections, en ligne et local) passent par **une seule méthode** : `Il2Cpp.ObjectPublicAbstractStInObBoObStInObInStUnique.Method_Public_Virtual_Final_New_Void_UInt32_Int32_Int32_Boolean_String_Action_1_ValueTypePublicSealedBoBoBoUnique_0(uint ms, …)` (Il2CppMegagon.Framework).
+- Validations du jeu : total envoyé en ligne seulement s'il dépasse 20 s et qu'aucune section ne manque ; un total < 25,3 s ou une section < 1,58 s marque la manche « suspecte » (total remplacé par 10-90 ms !) ; section envoyée en ligne si > 1,8 s ; record local écrit seulement s'il bat l'ancien.
+- Identifiant de classement : `HighscoreManager.Method_Public_Static_String_String_Int32_GameMode_EnumPublicSealedva5v2_0(piste, section, MountainManager.prop_GameMode_0, MountainManager.prop_EnumPublicSealedva5v2_0)` → `RO_01_A4_00_N_D` (section 00 = total, N = mode normal, D = jour) [vérifié]. Record local : `Manager<LeaderboardManager>.prop_T_0.Method_Private_UInt32_String_PDM_0(id)` en ms, 999998976 = aucun [vérifié : commande `record` de LmdExplorer].
+
+**Mode test de LmdMulti** (`TestMode = true` dans `LmdMulti.cfg`, rappelé en rouge dans le panneau) : prefix `return false` sur la méthode d'envoi unique ci-dessus, les succès (`AchievementManager.PDM_0`), les stats Steam (`StatisticManager.Method_Private_Void_StatisticsMetric_Single_2` / `_Int32_PDM_3`), les analytics et la progression ; plus des filets journalisés (« FILET ») sur l'envoi en ligne, l'écriture locale et `LeaderboardManager.Method_Private_Void_String_UInt32_PDM_0`. **Vérifié** le 2026-10-25 : franchissement de checkpoints puis arrivée par téléportation sur `AU_01_A4`, tous les temps (sections, total 7985 ms), la progression et les succès bloqués au premier niveau, aucun filet déclenché. Toute manche scriptée ou téléportée doit se faire en mode test. L'écran du jeu affiche quand même « record global » pour la section (affichage seul).
 
 ## 6. Steam et profil
 
@@ -181,7 +191,7 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 
 Mod explorateur : `src/LmdExplorer`.
 - Commandes : une par ligne dans `UserData/LmdExplorer/cmd.txt` ou `/tmp/lmdexplorer-cmd.txt`.
-- Liste : `dump`, `status`, `puppet`, `screens`, `mainstart`, `start`, `menu`, `catalogue`, `sel`, `select <ID>`, `restart`, `restartcp`, `lock`, `unlock`, `tostart`, `tocp [N|gN|f]` (respawn du checkpoint N, porte N, ligne d'arrivée), `timer`, `call <Type> <Méthode> [args]`.
+- Liste : `dump`, `status`, `puppet`, `screens`, `mainstart`, `start`, `menu`, `catalogue`, `sel`, `select <ID>`, `restart`, `restartcp`, `lock`, `unlock`, `tostart`, `tocp [N|gN|f]` (respawn du checkpoint N, porte N, ligne d'arrivée), `timer`, `record <piste>` (records locaux), `call <Type> <Méthode> [args]`.
 - Touches : F11 dump, F12 marionnette de test (F5-F10 sont à LmdMulti).
 - Fichiers drapeaux : `autostart` lance la piste sélectionnée depuis le menu ; `autodump` fait dump + marionnette de test à la première apparition du vélo.
-- ⚠ Une arrivée obtenue par téléportation peut être enregistrée par le jeu (records, classements en ligne, succès) : voir § 5 « Arrivées de test » avant tout essai.
+- ⚠ Une arrivée obtenue par téléportation peut être enregistrée par le jeu (records, classements en ligne, succès) : voir § 5 « Arrivées de test » avant tout essai : toujours avec LmdMulti en `TestMode`.

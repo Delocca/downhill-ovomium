@@ -32,6 +32,7 @@ internal sealed class PlayersPanel
         _onTrack = myTrack != null;
         string echo = node.Echo ? "  ·  <color=#ffd866>écho</color>" : "";
         _lines.Add($"<b>LmdMulti {LmdMultiMod.Version}</b>  ·  {node.Status}{echo}");
+        if (Diagnostics.TestMode.On) _lines.Add("<color=#ff8c78><b>MODE TEST</b> : aucun résultat enregistré (TestMode)</color>");
         _lines.Add($"<color=#9fe870>●</color> <b>{Esc(myName)}</b> (toi) — {GameInfo.TrackName(myTrack)}");
         var peers = node.Peers().OrderBy(p => NaturalKey(p.Name)).ToList();
         foreach (var p in peers.Where(p => !p.IsCompatible))
@@ -40,7 +41,7 @@ internal sealed class PlayersPanel
         if (_onTrack) AddTrackLines(ok, myTrack, isGhostVisible);
         else AddMenuLines(ok);
         if (peers.Count == 0) _lines.Add(Grey("aucun autre joueur détecté"));
-        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Config.PanelKey.Value} panneau · {Config.StyleKey.Value} aspect · {Config.EchoKey.Value} écho · {Config.CaptureKey.Value} capture")}</size>");
+        _lines.Add($"<size={(int)(13 * GuiKit.Scale)}>{Grey($"{Config.RaceKey.Value} course · {Config.PanelKey.Value} panneau · {Config.StyleKey.Value} aspect · {Config.EchoKey.Value} écho · {Config.CaptureKey.Value} capture")}</size>");
     }
 
     private void AddTrackLines(List<PeerInfo> peers, string myTrack, System.Func<ulong, bool> isGhostVisible)

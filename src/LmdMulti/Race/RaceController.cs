@@ -57,7 +57,7 @@ internal sealed class RaceController
 
     public void Update(double now)
     {
-        if (!_run.Loading) TrackAccess.RestoreExcept(GameInfo.CurrentTrackId());
+        if (TrackAccess.HasForced && !_run.Loading) TrackAccess.RestoreExcept(GameInfo.CurrentTrackId());
         if (Session == null) return;
         Session.Tick(now);
         string error = _run.Update(Session, now);

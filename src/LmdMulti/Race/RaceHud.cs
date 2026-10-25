@@ -84,7 +84,7 @@ internal static class RaceHud
         foreach (var e in v.Entries.Where(e => e.IsListed || v.Phase == RacePhase.Gathering && e.State == RacerState.Invited))
             lines.Add(EntryLine(s, e, ++pos));
         lines.Add(($"<size={(int)(13 * S)}><color=#aaaaaa>{Hints(s)}</color></size>", "", _row));
-        DrawTable(lines, 8 * S, PanelTop(), Mathf.Max(260 * S, Screen.width * 0.26f));
+        DrawTable(lines, 8 * S, PanelTop(), Mathf.Max(300 * S, Screen.width * 0.26f));
     }
 
     /// Mon chrono : figé à mon temps une fois arrivé.
@@ -140,7 +140,9 @@ internal static class RaceHud
     private static string FinishText(Standings v, RaceEntry e)
     {
         var first = v.Entries.FirstOrDefault(x => x.State == RacerState.Finished);
-        string gap = first != null && first.Id != e.Id ? Colored($"  +{Ranking.FormatTime(e.TimeMs - first.TimeMs)}", Grey) : "";
+        // Écart entre les temps affichés (au centième, tronqués) : 22.00 − 18.00 donne bien +4.00.
+        uint gapMs = (e.TimeMs / 10 - (first?.TimeMs ?? 0) / 10) * 10;
+        string gap = first != null && first.Id != e.Id ? Colored($"  +{Ranking.FormatTime(gapMs)}", Grey) : "";
         return $"<b>{Ranking.FormatTime(e.TimeMs)}</b>{gap}";
     }
 

@@ -19,6 +19,7 @@ internal static class TrackAccess
     private static readonly Dictionary<string, Forced> ForcedTracks = new();
 
     public static bool IsForced(string trackId) => trackId != null && ForcedTracks.ContainsKey(trackId);
+    public static bool HasForced => ForcedTracks.Count > 0;
 
     /// Choisit montagne puis piste dans le MountainManager (comme les menus). Faux + erreur si impossible.
     public static bool Select(string trackId, out string error)
@@ -92,6 +93,7 @@ internal static class ForcedTrackProgressionPatch
 {
     private static bool Prefix(string param_1)
     {
+        if (!Diagnostics.TestMode.Allow($"progression ({param_1})")) return false;
         if (!TrackAccess.IsForced(param_1)) return true;
         Log.Info($"course : arrivée sur {param_1} (piste forcée) non comptée dans la progression");
         return false;

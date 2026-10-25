@@ -64,11 +64,12 @@ internal static class HoldBikePatch
     private static bool Prefix(bool param_1) => param_1 || !RaceGame.HoldAtStart;
 }
 
-/// Section franchie (tracker de manche, vérifié en jeu le 2026-10-25) : classement en direct.
+/// Section franchie (tracker de manche, vérifié en jeu le 2026-10-25 : 0 au premier checkpoint après le
+/// départ, la ligne d'arrivée = dernière) : classement en direct.
 [HarmonyPatch(typeof(ObjectPublicBoGaObInSiStObDi2LiUnique), nameof(ObjectPublicBoGaObInSiStObDi2LiUnique.Method_Public_Void_Int32_Single_PDM_0))]
 internal static class SectionPatch
 {
-    private static void Prefix(int param_1) => RaceGame.LastSection = param_1;
+    private static void Prefix(int param_1) => RaceGame.LastSection = param_1 + 1; // le jeu compte depuis 0
 }
 
 /// Arrivée (tracker de manche, vérifié en jeu le 2026-10-25 : appelée au franchissement de la ligne).

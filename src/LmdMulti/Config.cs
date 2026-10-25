@@ -24,6 +24,7 @@ internal static class Config
     public static MelonPreferences_Entry<string> GhostStyle;
     public static MelonPreferences_Entry<bool> RecordPoses;
     public static MelonPreferences_Entry<bool> DebugLog;
+    public static MelonPreferences_Entry<bool> TestMode;
 
     public static void Init()
     {
@@ -49,6 +50,7 @@ internal static class Config
         GhostStyle = c.CreateEntry("GhostStyle", "None", description: "Aspect des fantômes (F7 pour essayer) : None (normal, comme ton vélo), Translucent (semi-transparent, nuancé de la couleur du joueur), Tint (opaque, teinté)");
         RecordPoses = c.CreateEntry("RecordPoses", false, description: "Debug : enregistre ses poses dans UserData/LmdMulti/recordings (rejouables par LmdBot)");
         DebugLog = c.CreateEntry("DebugLog", false, description: "Debug : statistiques réseau et mouvements des os dans le journal");
+        TestMode = c.CreateEntry("TestMode", false, description: "Tests seulement : le jeu n'enregistre aucun résultat (classements en ligne et locaux, succès, stats Steam, progression). À laisser à false pour jouer");
         c.SaveToFile(false); // écrit les valeurs par défaut manquantes (fichier documenté)
     }
 

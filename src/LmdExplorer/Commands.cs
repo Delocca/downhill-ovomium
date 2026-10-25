@@ -54,6 +54,8 @@ internal static class Commands
         ["tostart"] = _ => PlayerManager.Method_Public_Static_Void_Transform_0(StartTransform()),
         ["tocp"] = n => PlayerManager.Method_Public_Static_Void_Transform_0(CheckpointTransform(n)),         // tocp [N] (défaut : avant-dernier ; f = arrivée)
         ["timer"] = _ => Out.Info(TrackProbe.TimerLine()),
+        ["record"] = id => LocalRecords(id),                                                                // record RO_01_A4
+
         ["call"] = spec => Invoker.Call(spec),
     };
 
@@ -81,6 +83,20 @@ internal static class Commands
     {
         var all = Resources.FindObjectsOfTypeAll<PauseScreen>();
         return all.Length > 0 ? all[0] : null;
+    }
+
+    /// Records locaux (profil) d'une piste : total (section 0) puis chaque section, en ms
+    /// (≈ 999998976 = aucun). Identifiant de classement construit comme le fait le tracker du jeu.
+    private static void LocalRecords(string trackId)
+    {
+        var lm = Il2CppMegagon.Downhill.Managers.Manager<LeaderboardManager>.prop_T_0;
+        var mode = MountainManager.prop_GameMode_0;
+        var tod = MountainManager.prop_EnumPublicSealedva5v2_0;
+        for (int s = 0; s <= 9; s++)
+        {
+            string id = HighscoreManager.Method_Public_Static_String_String_Int32_GameMode_EnumPublicSealedva5v2_0(trackId, s, mode, tod);
+            Out.Info($"record local {id} = {lm.Method_Private_UInt32_String_PDM_0(id)}");
+        }
     }
 
     /// Point de respawn du checkpoint N (défaut : le dernier qui en a un avant l'arrivée) : pour rouler

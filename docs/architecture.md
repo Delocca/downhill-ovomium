@@ -16,7 +16,7 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 | `src/LmdMulti/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
 | `src/LmdMulti/Race/` | Course côté jeu : `RaceController` (session, touches, réseau), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/LmdMulti/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications |
-| `src/LmdMulti/Diagnostics/` | Capture d'écran (F10), statistiques (réseau, images/s, coût du mod) et relevé des os en mode `DebugLog` |
+| `src/LmdMulti/Diagnostics/` | Capture d'écran (F10), statistiques (réseau, images/s, coût du mod), relevé des os en mode `DebugLog`, `TestMode` (aucun résultat enregistré par le jeu pendant les tests) |
 | `tools/LmdBot/` | Faux joueur(s) en console (Linux) : orbite autour du joueur ou rejeu d'un .lmdrec, jusqu'à 64 dans un processus ; pair de course simulé (`RaceBot`) |
 | `tools/lmd-virtual.sh`, `tools/lmd-keys.sh` | Jeu sur écran virtuel (`:98`) et pilotage au clavier : entrer en piste, rouler en filmant, captures |
 | `tests/LmdMulti.Tests/` | Tests xUnit du cœur (`dotnet test tests/LmdMulti.Tests`) |
@@ -105,7 +105,7 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
 
 ## Configuration
 
-Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 / `RaceQuitKey` F5 / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`.
+Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 / `RaceQuitKey` F5 / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`, `TestMode` (tests seulement : le jeu n'enregistre aucun résultat, ni classements en ligne ou locaux, ni succès, stats, progression ; voir `game-api.md` § 5 « Arrivées de test » ; **obligatoire pour toute manche scriptée ou téléportée**).
 
 ## Interface
 
