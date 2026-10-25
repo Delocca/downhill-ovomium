@@ -15,6 +15,6 @@ internal static class RaceKeys
         else if (padModifier) Pad = true;
     }
 
-    public static string Go => Pad ? "Select + A" : Config.RaceKey.Value;
-    public static string Quit => Pad ? "Select + B maintenus" : $"{Config.RaceKey.Value} maintenu";
+    public static string Go => Pad ? "Select + A" : Config.RaceKey.Name;
+    public static string Quit => Pad ? "Select + B maintenus" : $"{Config.RaceKey.Name} maintenu";
 }

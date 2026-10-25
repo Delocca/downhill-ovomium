@@ -30,7 +30,8 @@ public class OvomiumMod : MelonMod
     private readonly View.CameraToggle _camera = new();
     private readonly Tweaks.KeyboardRemap _keyboard = new();
     private string _myName = "?", _myTrack;
-    private double _nextLocalRefresh;
+    private double _nextLocalRefresh, _nextNoticeCheck;
+    private string _menuNotice;
     private readonly System.Diagnostics.Stopwatch _cost = new(); // temps passé dans le mod (DebugLog)
 
     public override void OnInitializeMelon()
@@ -51,6 +52,19 @@ public class OvomiumMod : MelonMod
         Log.Info($"prêt : {_node.Status}, protocole v{Core.Protocol.ProtocolInfo.Version}, {options.ManualPeers.Count} IP manuelle(s), écho={_node.Echo}, config {Config.FilePath}");
     }
 
+    /// Tous les mods sont enregistrés : on peut chercher LMD-VR et signaler les touches que le joueur lui a prises.
+    public override void OnLateInitializeMelon() => Log.Try("touches VR", () => _menuNotice = View.LmdVrBridge.KeysNotice());
+
+    /// Avis gardé jusqu'au menu : affiché plus tôt, il disparaîtrait pendant les logos.
+    private void ShowMenuNotice(double now)
+    {
+        if (_menuNotice == null || now < _nextNoticeCheck) return;
+        _nextNoticeCheck = now + 500;
+        if (!Tweaks.IntroSkip.TitlePassed) return;
+        _toasts.Show(_menuNotice, new Color(1f, 0.75f, 0.4f), lifeMs: 12000);
+        _menuNotice = null;
+    }
+
     public override void OnUpdate()
     {
         if (_node == null) return;
@@ -59,6 +73,7 @@ public class OvomiumMod : MelonMod
         Log.Try("intro", Tweaks.IntroSkip.Update);
         double now = NetClock.NowMs;
         Log.Try("état local", () => RefreshLocal(now));
+        Log.Try("avis", () => ShowMenuNotice(now));
         Log.Try("événements réseau", DrainEvents);
         Log.Try("touches", HandleKeys);
         Log.Try("touches de course", () => _race.HandleKeys(now, _myName));
@@ -165,13 +180,13 @@ public class OvomiumMod : MelonMod
 
     private void HandleKeys()
     {
-        if (Input.GetKeyDown(Config.Key(Config.PanelKey))) _panel.Visible = !_panel.Visible;
-        if (Input.GetKeyDown(Config.Key(Config.EchoKey)))
+        if (Input.GetKeyDown(Config.PanelKey.Code)) _panel.Visible = !_panel.Visible;
+        if (Input.GetKeyDown(Config.EchoKey.Code))
         {
             _node.Echo = !_node.Echo;
             _toasts.Show(_node.Echo ? $"Écho activé : ton fantôme te suit à {Config.EchoDelaySeconds.Value:0.#} s" : "Écho coupé", new Color(1f, 0.85f, 0.4f), "echo");
         }
-        if (Input.GetKeyDown(Config.Key(Config.StyleKey))) CycleGhostStyle();
+        if (Input.GetKeyDown(Config.StyleKey.Code)) CycleGhostStyle();
     }
 
     /// Aspect suivant, enregistré dans la config ; les marionnettes sont recréées à l'image suivante.

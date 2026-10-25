@@ -61,6 +61,9 @@ internal static class IntroSkip
         Log.Info($"intro : écran titre passé, menu à {Time.realtimeSinceStartup:0.0} s du lancement d'Unity");
     }
 
+    /// Écran titre passé (par nous ou par le joueur) : le menu principal est là.
+    public static bool TitlePassed => _titleDone;
+
     /// Le joueur a validé l'écran titre lui-même : plus rien à faire.
     internal static void TitleValidated() => _titleDone = true;
 }

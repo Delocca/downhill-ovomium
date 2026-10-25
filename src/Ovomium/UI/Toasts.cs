@@ -11,10 +11,11 @@ internal sealed class Toasts
     private readonly List<(string text, Color color, double until, string key)> _items = new();
 
     /// key : une notification de même clé remplace la précédente (ex. réglage changé plusieurs fois de suite).
-    public void Show(string text, Color color, string key = null)
+    /// lifeMs : plus long pour un message à lire en entier (avis au démarrage).
+    public void Show(string text, Color color, string key = null, double lifeMs = LifeMs)
     {
         if (key != null) _items.RemoveAll(t => t.key == key);
-        _items.Add((text, color, NetClock.NowMs + LifeMs, key));
+        _items.Add((text, color, NetClock.NowMs + lifeMs, key));
         if (_items.Count > 5) _items.RemoveAt(0);
         Log.Info($"[écran] {text}");
     }

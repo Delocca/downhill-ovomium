@@ -135,7 +135,7 @@ internal sealed class RaceController
     public void HandleKeys(double now, string myName)
     {
         Log.Try("manette", () => _pad.Update(now)); // une erreur de Rewired ne doit pas priver du clavier
-        var state = new RaceButtonState(Input.GetKey(Config.Key(Config.RaceKey)), _pad.Back, _pad.A, _pad.B);
+        var state = new RaceButtonState(Input.GetKey(Config.RaceKey.Code), _pad.Back, _pad.A, _pad.B);
         RaceKeys.Track(state.Key, state.PadModifier, _pad.LastWasPad);
         switch (Buttons.Update(state, now, CanGo(now), CanQuit))
         {

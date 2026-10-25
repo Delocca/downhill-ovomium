@@ -12,21 +12,23 @@ internal sealed class CameraToggle
 {
     private static readonly Color ToastColor = new(0.8f, 0.9f, 1f);
     private LmdCameraBridge _bridge;
-    private bool _searched, _padWasDown, _absentShown;
+    private bool _searched, _padWasDown, _absentShown, _vrShown, _vr;
     private string _previous = "Default"; // vue à retrouver en quittant la 1re personne
 
-    /// Aide affichée dans le panneau (« V vue » ou « R3 vue »), vide sans LMD-Camera.
-    public string Hint => _bridge == null ? "" : $" · {(RaceKeys.Pad ? "R3" : Config.CameraKey.Value)} vue";
+    /// Aide affichée dans le panneau (« V vue » ou « R3 vue »), vide sans LMD-Camera ou pendant la VR.
+    public string Hint => _bridge == null || _vr ? "" : $" · {(RaceKeys.Pad ? "R3" : Config.CameraKey.Name)} vue";
 
     public void Update(bool onTrack, Toasts toasts)
     {
         if (!_searched) { _searched = true; _bridge = LmdCameraBridge.Find(); }
+        _vr = LmdVrBridge.Active;
         bool padDown = PadReader.AnyButton(PadReader.ButtonR3);
-        bool pressed = Input.GetKeyDown(Config.Key(Config.CameraKey)) || (padDown && !_padWasDown);
+        bool pressed = Input.GetKeyDown(Config.CameraKey.Code) || (padDown && !_padWasDown);
         _padWasDown = padDown;
         string view = _bridge?.View;
         if (view == "Default" || view == "ThirdPerson") _previous = view; // aussi après les touches 2 et 3 du mod
         if (!pressed || !onTrack || GameInfo.IsPaused()) return;
+        if (_vr) { ExplainVr(toasts); return; } // R3 et L3+R3 sont à LMD-VR, qui pilote aussi la caméra
         if (_bridge == null)
         {
             if (!_absentShown) toasts.Show("Vue 1re personne indisponible : mod LMD-Camera absent ou incompatible", ToastColor, "vue");
@@ -34,6 +36,14 @@ internal sealed class CameraToggle
             return;
         }
         Switch(view, toasts);
+    }
+
+    private void ExplainVr(Toasts toasts)
+    {
+        if (_vrShown) return;
+        _vrShown = true;
+        Log.Info("vue : bascule ignorée, VR de LMD-VR démarrée");
+        toasts.Show("VR démarrée : la vue se change avec LMD-VR (F5, ou LB + RB + croix) ; V et R3 d'Ovomium sont coupés", ToastColor, "vue");
     }
 
     private void Switch(string view, Toasts toasts)

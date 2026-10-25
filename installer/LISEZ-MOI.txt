@@ -50,6 +50,8 @@ DÉMARRAGE RAPIDE ET CLAVIER
   comme dans les menus. Les flèches marchent toujours. Si la détection se trompe :
   KeyboardLayout = "azerty" (ou "qwertz", "qwerty" = touches d'origine du jeu)
   dans Ovomium.cfg. Les touches F6 à F9, V et 1/2/3 sont les mêmes partout.
+- Changer les touches d'Ovomium : RaceKey, StyleKey, PanelKey, EchoKey, CameraKey
+  dans Ovomium.cfg (noms des touches d'Unity : F1…F12, V, Keypad1…).
 
 
 VUE À LA PREMIÈRE PERSONNE (mod LMD-Camera)
@@ -67,6 +69,20 @@ Pour ne pas l'utiliser : supprimez <dossier du jeu>\Mods\LMD-Camera.dll.
 
 LMD-Camera par flo-st, licence MIT (fichiers\LMD-Camera-LICENSE.txt),
 https://github.com/flo-st/LMD-Camera
+
+
+RÉALITÉ VIRTUELLE (mod LMD-VR, à installer à part)
+--------------------------------------------------
+Ovomium fonctionne à côté du mod LMD-VR (casque OpenXR, Windows) :
+https://github.com/visual-gh/LMD-VR (installation : voir sa page).
+- LMD-VR prend F5, F6, F7, F9, F10, F11 : quand il est installé, les touches
+  d'Ovomium passent sur F1 course, F2 aspect, F3 panneau, F4 écho (un message
+  le rappelle au menu). Les combinaisons de manette ne changent pas.
+- Pendant la VR, V et R3 d'Ovomium sont coupés : la vue se change avec LMD-VR
+  (F5, ou LB + RB + croix).
+- Le panneau des joueurs, les messages et l'affichage des courses ne sont pas
+  visibles dans le casque, sauf avec la caméra « Screen » de LMD-VR.
+- LMD-VR est récent et n'a pas encore été testé avec Ovomium dans un vrai casque.
 
 
 ÇA NE MARCHE PAS ?
