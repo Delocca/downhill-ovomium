@@ -32,6 +32,8 @@ public sealed class NodeOptions
     public string ModVersion = "";
     /// Identifiant de cette instance (aléatoire) : distingue aussi deux jeux sur un même compte Steam.
     public ulong InstanceId = (ulong)Random.Shared.NextInt64() ^ (ulong)Environment.TickCount64 << 32;
+    /// Tests : part des paquets émis jetée volontairement (0 à 1), pour éprouver les renvois.
+    public double SimulatedLoss;
 }
 
 /// Ce qu'on sait d'un pair. Les copies remises au fil principal sont des instantanés (Clone).
@@ -52,12 +54,15 @@ public sealed class PeerInfo
     /// 0 si compatible, sinon version de protocole du pair (jamais décodé).
     public byte IncompatibleVersion;
     public int PosesReceived;
+    /// Horloge du pair − la nôtre (ms, NetClock), si HasClock : convertit ses horodatages (départ de course).
+    public double ClockOffsetMs;
+    public bool HasClock;
 
     public bool IsCompatible => IncompatibleVersion == 0;
     public PeerInfo Clone() => (PeerInfo)MemberwiseClone();
 }
 
-public enum NetEventKind { PeerJoined, PeerChanged, PeerLeft, Pose, Log }
+public enum NetEventKind { PeerJoined, PeerChanged, PeerLeft, Pose, Log, Message }
 
 /// Message du fil réseau vers le fil principal.
 public sealed class NetEvent
@@ -70,6 +75,8 @@ public sealed class NetEvent
     /// Instant de réception (NetClock) d'une pose.
     public double RecvMs;
     public string Text;
+    /// Contenu d'un message fiable (Message), livré dans l'ordre d'émission.
+    public byte[] Data;
 
     public static NetEvent Log(string text) => new() { Kind = NetEventKind.Log, Text = text };
 }

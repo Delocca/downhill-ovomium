@@ -14,6 +14,10 @@ internal sealed class PeerTable
     private readonly object _lock = new();
     private readonly Dictionary<ulong, PeerInfo> _peers = new();
     private readonly ConcurrentQueue<NetEvent> _events;
+    private readonly Dictionary<ulong, ClockSync> _clocks = new();
+
+    /// Pair retiré (Bye, expiration) : le canal fiable l'oublie.
+    public System.Action<ulong> OnLeft;
 
     public PeerTable(ConcurrentQueue<NetEvent> events) => _events = events;
 
@@ -58,17 +62,30 @@ internal sealed class PeerTable
         }
     }
 
-    public void SetRtt(ulong id, int rttMs)
+    /// Pong reçu : aller-retour (lissé, affiché) et décalage d'horloge (meilleur échantillon récent).
+    public void OnPong(ulong id, uint pingSentMs, uint responderMs, uint recvMs)
     {
         lock (_lock)
-            if (_peers.TryGetValue(id, out var p))
-                p.RttMs = p.RttMs < 0 ? rttMs : (p.RttMs * 3 + rttMs) / 4; // lissage léger
+        {
+            if (!_peers.TryGetValue(id, out var p)) return;
+            int rttMs = (int)(recvMs - pingSentMs);
+            p.RttMs = p.RttMs < 0 ? rttMs : (p.RttMs * 3 + rttMs) / 4; // lissage léger
+            if (!_clocks.TryGetValue(id, out var clock)) _clocks[id] = clock = new ClockSync();
+            clock.Add(pingSentMs, responderMs, recvMs);
+            p.HasClock = clock.HasValue;
+            p.ClockOffsetMs = clock.OffsetMs;
+        }
+    }
+
+    public PeerInfo Get(ulong id)
+    {
+        lock (_lock) return _peers.TryGetValue(id, out var p) ? p.Clone() : null;
     }
 
     public void Remove(ulong id)
     {
         lock (_lock)
-            if (_peers.Remove(id, out var p)) Emit(NetEventKind.PeerLeft, p);
+            if (_peers.Remove(id, out var p)) Left(p);
     }
 
     public void Expire(double now, double timeoutMs)
@@ -77,8 +94,15 @@ internal sealed class PeerTable
             foreach (var p in _peers.Values.Where(p => now - p.LastSeenMs > timeoutMs).ToList())
             {
                 _peers.Remove(p.Id);
-                Emit(NetEventKind.PeerLeft, p);
+                Left(p);
             }
+    }
+
+    private void Left(PeerInfo p)
+    {
+        _clocks.Remove(p.Id);
+        OnLeft?.Invoke(p.Id);
+        Emit(NetEventKind.PeerLeft, p);
     }
 
     /// Adresses des pairs compatibles réels (hors écho) : destinataires des poses et pings.

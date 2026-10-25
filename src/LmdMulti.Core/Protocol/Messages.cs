@@ -95,10 +95,37 @@ public static class Messages
         ProtocolInfo.HeaderSize + 4 + 1 + 12 + 4 +
         (f.HasBones ? Skeleton.Count * 4 + 4 + BitOperations.PopCount(f.PosMask) * 6 : 0);
 
-    /// Ping et Pong portent l'horodatage de l'émetteur du ping (renvoyé tel quel).
-    public static void WritePing(PacketWriter w, MessageType type, ulong senderId, uint timeMs)
+    /// Ping : horodatage de son émetteur.
+    public static void WritePing(PacketWriter w, ulong senderId, uint timeMs)
     {
-        WriteHeader(w, type, senderId);
+        WriteHeader(w, MessageType.Ping, senderId);
         w.U32(timeMs);
     }
+
+    /// Pong : horodatage du ping renvoyé tel quel, puis heure du répondeur (décalage d'horloge).
+    public static void WritePong(PacketWriter w, ulong senderId, uint pingTimeMs, uint responderTimeMs)
+    {
+        WriteHeader(w, MessageType.Pong, senderId);
+        w.U32(pingTimeMs);
+        w.U32(responderTimeMs);
+    }
+
+    /// Message fiable : flux (aléatoire, change si l'émetteur repart de zéro), numéro, contenu brut.
+    public static void WriteReliable(PacketWriter w, ulong senderId, uint stream, uint seq, byte[] payload)
+    {
+        WriteHeader(w, MessageType.Reliable, senderId);
+        w.U32(stream);
+        w.U32(seq);
+        w.Bytes(payload);
+    }
+
+    public static void WriteAck(PacketWriter w, ulong senderId, uint stream, uint seq)
+    {
+        WriteHeader(w, MessageType.Ack, senderId);
+        w.U32(stream);
+        w.U32(seq);
+    }
+
+    /// Plus gros contenu d'un message fiable.
+    public const int MaxReliablePayload = ProtocolInfo.MaxPacketSize - ProtocolInfo.HeaderSize - 8;
 }

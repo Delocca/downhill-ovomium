@@ -22,7 +22,17 @@ internal sealed class BotOptions
   --rate HZ         poses par seconde (défaut 25)
   --count N         simule N joueurs (ports N, N+1…, pseudos NOM-1, NOM-2…) : orbites de rayons
                     croissants, ou rejeux décalés de 1,5 s chacun le long de la piste
-  --duration S      s'arrête après S secondes (défaut : Ctrl+C)";
+  --duration S      s'arrête après S secondes (défaut : Ctrl+C)
+  --loss P          jette volontairement cette part des paquets émis (0 à 1) : éprouve les renvois
+Course :
+  --race join       accepte les invitations, charge --race-load s, roule --race-time s (+4 s par bot)
+  --race host       lance une course --race-delay s après avoir vu un vrai joueur (une seule fois)
+  --race-track ID   piste de la course hôte (défaut : celle du joueur, sinon CA_01_A2)
+  --race-time S     temps de course simulé (défaut 25)
+  --race-load S     durée du « chargement » avant d'être prêt (défaut 3)
+  --race-delay S    hôte : attente avant l'invitation (défaut 3)
+  --race-decline    refuse les invitations
+  --race-dnf        abandonne à mi-course";
 
     public int Port = 47710, TargetPort = 47700, Rate = 25, Count = 1;
     public int Index; // rang du bot simulé (0 = le seul ou le premier, qui affiche le rapport détaillé)
@@ -30,7 +40,10 @@ internal sealed class BotOptions
     public bool Broadcast = true;
     public string Name = "LmdBot", Track, Replay;
     public float Radius = 4f;
-    public double DurationS = double.PositiveInfinity;
+    public double DurationS = double.PositiveInfinity, Loss;
+    public string RaceMode, RaceTrack;
+    public double RaceTimeS = 25, RaceLoadS = 3, RaceDelayS = 3;
+    public bool RaceDecline, RaceDnf;
 
     public static BotOptions Parse(string[] args)
     {
@@ -50,7 +63,15 @@ internal sealed class BotOptions
                 case "--radius": o.Radius = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--rate": o.Rate = Math.Clamp(int.Parse(Next()), 1, 60); break;
                 case "--count": o.Count = Math.Clamp(int.Parse(Next()), 1, 64); break;
-                case "--duration": o.DurationS = double.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--duration": o.DurationS = Num(Next()); break;
+                case "--loss": o.Loss = Math.Clamp(Num(Next()), 0, 0.9); break;
+                case "--race": o.RaceMode = Next() is "join" or "host" ? args[i] : throw new ArgumentException("--race join|host"); break;
+                case "--race-track": o.RaceTrack = Next(); break;
+                case "--race-time": o.RaceTimeS = Num(Next()); break;
+                case "--race-load": o.RaceLoadS = Num(Next()); break;
+                case "--race-delay": o.RaceDelayS = Num(Next()); break;
+                case "--race-decline": o.RaceDecline = true; break;
+                case "--race-dnf": o.RaceDnf = true; break;
                 case "-h": case "--help": case "help": return null;
                 default: throw new ArgumentException($"option inconnue : {args[i]}");
             }
@@ -72,9 +93,11 @@ internal sealed class BotOptions
 
     public NodeOptions ToNodeOptions() => new()
     {
-        Port = Port, DiscoveryPort = TargetPort, Broadcast = Broadcast, ModVersion = "bot",
+        Port = Port, DiscoveryPort = TargetPort, Broadcast = Broadcast, ModVersion = "bot", SimulatedLoss = Loss,
         ManualPeers = Endpoints.ParsePeers(string.Join(",", Peers), TargetPort, Console.Error.WriteLine),
     };
+
+    private static double Num(string s) => double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
 
     /// « latest » : le .lmdrec utilisable (≥ 2 s) le plus récent du dossier d'enregistrements du jeu.
     /// Celui que le jeu est en train d'écrire est souvent encore vide (écriture par blocs) : on le saute.

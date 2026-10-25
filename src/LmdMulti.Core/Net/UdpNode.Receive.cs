@@ -50,16 +50,20 @@ public sealed partial class UdpNode
             case MessageType.Ping:
                 if (!_peers.Touch(h.SenderId, ep, now)) break;
                 uint t = Messages.BodyReader(_rx, len).U32();
-                Messages.WritePing(_w, MessageType.Pong, Id, t);
+                Messages.WritePong(_w, Id, t, NetClock.NowMsU32);
                 Send(_w.Buffer, _w.Length, ep);
                 break;
             case MessageType.Pong:
-                if (_peers.Touch(h.SenderId, ep, now))
-                    _peers.SetRtt(h.SenderId, (int)(NetClock.NowMsU32 - Messages.BodyReader(_rx, len).U32()));
+                if (!_peers.Touch(h.SenderId, ep, now)) break;
+                var pong = Messages.BodyReader(_rx, len);
+                uint sent = pong.U32();
+                _peers.OnPong(h.SenderId, sent, pong.U32(), NetClock.NowMsU32);
                 break;
             case MessageType.Bye:
                 _peers.Remove(h.SenderId);
                 break;
+            case MessageType.Reliable: HandleReliable(h.SenderId, len, ep, now); break;
+            case MessageType.Ack: HandleAck(h.SenderId, len, ep, now); break;
         }
     }
 

@@ -37,7 +37,7 @@ public sealed partial class UdpNode : IDisposable
     public UdpNode(NodeOptions options)
     {
         _o = options;
-        _peers = new PeerTable(_events);
+        _peers = new PeerTable(_events) { OnLeft = _reliable.Forget };
     }
 
     /// Ouvre le socket (port souhaité, sinon les suivants) et démarre le fil. Faux si aucun port libre.
@@ -92,6 +92,9 @@ public sealed partial class UdpNode : IDisposable
 
     public List<PeerInfo> Peers() => _peers.Snapshot();
 
+    /// Instantané d'un pair, ou null s'il n'est (plus) connu.
+    public PeerInfo Peer(ulong id) => _peers.Get(id);
+
     private void Loop()
     {
         while (!_stop)
@@ -100,6 +103,7 @@ public sealed partial class UdpNode : IDisposable
             {
                 if (_sock.Poll(5000, SelectMode.SelectRead)) ReceiveAll();
                 FlushPoses();
+                FlushMessages(NetClock.NowMs);
                 Periodic(NetClock.NowMs);
             }
             catch (ObjectDisposedException) { return; }
@@ -148,12 +152,13 @@ public sealed partial class UdpNode : IDisposable
 
     private void PingAll()
     {
-        Messages.WritePing(_w, MessageType.Ping, Id, NetClock.NowMsU32);
+        Messages.WritePing(_w, Id, NetClock.NowMsU32);
         foreach (var (_, ep) in _peers.Targets()) Send(_w.Buffer, _w.Length, ep);
     }
 
     private void Send(byte[] buf, int len, IPEndPoint ep)
     {
+        if (_o.SimulatedLoss > 0 && Random.Shared.NextDouble() < _o.SimulatedLoss) return; // tests de fiabilité
         try { _sock.SendTo(buf, 0, len, SocketFlags.None, ep); Interlocked.Increment(ref PacketsOut); }
         catch (SocketException) { /* hôte injoignable, réseau absent : l'expiration fera le ménage */ }
     }

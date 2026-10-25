@@ -37,6 +37,12 @@ public sealed class PacketWriter
         Length += n;
     }
 
+    public void Bytes(byte[] data)
+    {
+        data.AsSpan().CopyTo(Buffer.AsSpan(Length));
+        Length += data.Length;
+    }
+
     public byte[] ToArray() => Buffer.AsSpan(0, Length).ToArray();
 }
 
@@ -73,4 +79,7 @@ public sealed class PacketReader
         int n = U8();
         return Encoding.UTF8.GetString(Take(n));
     }
+
+    /// Tout ce qui reste du paquet.
+    public byte[] Rest() => Take(_end - Pos).ToArray();
 }

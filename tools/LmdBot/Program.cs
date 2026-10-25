@@ -67,13 +67,15 @@ internal static class Program
         var stats = new Dictionary<ulong, PeerStats>();
         var names = new Dictionary<ulong, PeerInfo>();
         var w = new PacketWriter();
+        var race = o.RaceMode != null ? new RaceBot(o, node) : null;
         double start = NetClock.NowMs, nextReport = start + 2000;
         while (!stop.IsSet && NetClock.NowMs - start < o.DurationS * 1000)
         {
-            Drain(node, stats, names);
+            Drain(node, stats, names, race);
+            race?.Tick(NetClock.NowMs, names.Values.ToList());
             // Ancre de l'orbite : un vrai joueur (deux bots qui s'orbitent mutuellement divergent).
             var anchorPeer = names.Values.FirstOrDefault(p => p.IsCompatible && p.OnTrack && p.ModVersion != "bot" && stats.ContainsKey(p.Id));
-            string track = fixedTrack ?? anchorPeer?.Track ?? names.Values.FirstOrDefault(p => p.OnTrack)?.Track;
+            string track = race?.Track ?? fixedTrack ?? anchorPeer?.Track ?? names.Values.FirstOrDefault(p => p.OnTrack)?.Track;
             node.SetLocal(o.Name, 76561190000000000UL + (node.Id & 0xFFFF), track ?? "", track != null);
             if (track != null)
             {
@@ -88,10 +90,11 @@ internal static class Program
         }
     }
 
-    private static void Drain(UdpNode node, Dictionary<ulong, PeerStats> stats, Dictionary<ulong, PeerInfo> names)
+    private static void Drain(UdpNode node, Dictionary<ulong, PeerStats> stats, Dictionary<ulong, PeerInfo> names, RaceBot race)
     {
         while (node.TryGetEvent(out var e))
         {
+            race?.OnEvent(e, NetClock.NowMs);
             switch (e.Kind)
             {
                 case NetEventKind.PeerJoined:
@@ -129,5 +132,5 @@ internal static class Program
 
     private static string Track(PeerInfo p) => p.OnTrack ? p.Track : "menu";
 
-    private static void Say(string msg) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {msg}");
+    internal static void Say(string msg) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {msg}");
 }
