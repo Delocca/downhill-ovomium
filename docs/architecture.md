@@ -21,6 +21,7 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 | `tools/lmd-virtual.sh`, `tools/lmd-keys.sh` | Jeu sur écran virtuel (`:98`) et pilotage au clavier : entrer en piste, rouler en filmant, captures |
 | `tests/LmdMulti.Tests/` | Tests xUnit du cœur (`dotnet test tests/LmdMulti.Tests`) |
 | `src/LmdExplorer/` | Outil de dev séparé (exploration de l'API du jeu), pas livré aux joueurs |
+| `installer/` | Installeur Windows (`.bat` + scripts PowerShell), désinstalleur, `LISEZ-MOI.txt`, `install-linux.sh` ; emballés par `tools/make-dist.sh` dans `dist/LmdMulti-<version>.zip`, testés par `tests/installer/run-tests.sh`. Voir `docs/distribution.md` |
 
 Le mod compile les sources du cœur directement (fichiers liés dans `LmdMulti.csproj`) : **une seule DLL**, `LmdMulti.dll`, à copier dans `<jeu>/Mods/`. Aucune dépendance externe : UDP maison, avec une petite couche fiable (`ReliableChannel`) pour les rares messages de course ; les poses, envoyées en continu, n'en ont pas besoin.
 
@@ -156,7 +157,7 @@ Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même
 
 - Les fantômes ont l'apparence (vélo, tenue) du joueur local : l'apparence de chacun n'est pas encore transmise (voir `game-api.md` § 3). Le style translucide le masque en partie.
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
-- Windows : au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés).
+- Windows : l'installeur crée la règle de pare-feu (UAC) ; sans elle, au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés), question souvent cachée sous le jeu plein écran (`docs/distribution.md`).
 - Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; affichage au-delà de 1080p.
 - Course : un seul hôte coordonne ; s'il quitte avant le départ, la course est annulée ; après, chacun la finit seul avec un classement figé (voir « Départs et coupures »).
 - Manette : boutons lus par leurs identifiants Xbox (XInput, ce que Proton présente pour la plupart des manettes) ; une manette reconnue autrement par Rewired (ex. DualShock en natif) pourrait avoir d'autres numéros. Manettes vues journalisées au démarrage (« manettes : … »). Vérifiée avec une manette virtuelle seulement (`tools/lmd-pad.py`) ; vérification avec une vraie manette : `tools/pad-check.sh`.
