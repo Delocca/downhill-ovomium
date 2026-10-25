@@ -6,12 +6,12 @@ using UnityEngine;
 namespace LmdMulti.Ghosts;
 
 /// Aspect des fantômes (réglage GhostStyle) :
-///  - Translucent (défaut) : semi-transparent, sans éclairage ni ombre, nuancé de la couleur du joueur
+///  - None (défaut, « normal ») : identique au vélo local ; le pseudo coloré distingue les joueurs ;
+///  - Translucent : semi-transparent, sans éclairage ni ombre, nuancé de la couleur du joueur
 ///    (matériau propre au fantôme, détruit avec lui) ;
 ///  - Tint : opaque, couleurs multipliées par celle du joueur (MaterialPropertyBlock : les matériaux
 ///    partagés avec le vélo local ne sont jamais modifiés). Effet discret : les couleurs viennent
-///    surtout des sommets du modèle, que _Color ne fait que moduler ;
-///  - None : identique au vélo local.
+///    surtout des sommets du modèle, que _Color ne fait que moduler.
 internal static class GhostLook
 {
     public enum Style { None, Tint, Translucent }
@@ -19,7 +19,7 @@ internal static class GhostLook
     private const string TranslucentShader = "Legacy Shaders/Particles/Alpha Blended";
     private static bool _logged;
 
-    public static Style Parse(string s) => System.Enum.TryParse<Style>(s, true, out var v) ? v : Style.Translucent;
+    public static Style Parse(string s) => System.Enum.TryParse<Style>(s, true, out var v) ? v : Style.None;
 
     private static readonly Dictionary<ulong, int> Slots = new();
 

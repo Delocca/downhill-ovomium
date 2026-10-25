@@ -43,8 +43,9 @@ public class ExplorerMod : MelonMod
             _nextStatus = now + 2f;
             if (BikeProbe.Find() != null) Out.Info(Probes.StatusLine());
         }
-        if (Input.GetKeyDown(KeyCode.F5)) Out.Try("F5", () => Commands.Run("dump"));
-        if (Input.GetKeyDown(KeyCode.F6)) Out.Try("F6", () => Commands.Run("puppet"));
+        // F11/F12 : F5-F10 sont prises par LmdMulti (course, aspect, panneau, écho, capture).
+        if (Input.GetKeyDown(KeyCode.F11)) Out.Try("F11", () => Commands.Run("dump"));
+        if (Input.GetKeyDown(KeyCode.F12)) Out.Try("F12", () => Commands.Run("puppet"));
     }
 
     public override void OnLateUpdate() => PuppetTest.Follow();
@@ -62,7 +63,8 @@ public class ExplorerMod : MelonMod
     {
         bool hasBike = BikeProbe.Find() != null;
         _bikeSince = hasBike ? (_bikeSince < 0 ? now : _bikeSince) : -1f;
-        if (hasBike && !_autoDumped && now - _bikeSince > 5f)
+        // Fichier drapeau « autodump » : dump + marionnette de test à la première apparition du vélo.
+        if (hasBike && !_autoDumped && now - _bikeSince > 5f && Out.Flag("autodump"))
         {
             _autoDumped = true;
             Commands.Run("dump");

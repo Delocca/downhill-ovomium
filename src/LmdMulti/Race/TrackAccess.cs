@@ -1,0 +1,99 @@
+using System.Collections.Generic;
+using HarmonyLib;
+using Il2Cpp;
+using Il2CppMegagon.Downhill;
+using Il2CppMegagon.Downhill.Managers;
+using Il2CppMegagon.Downhill.Progression;
+
+namespace LmdMulti.Race;
+
+/// Sélection d'une piste par son ID (ex. AL_01_A1), y compris verrouillée chez ce joueur (docs/game-api.md § 4).
+/// Verrou du jeu : masque d'heures du jour débloquées porté par l'info de piste, en mémoire seulement
+/// (recalculé depuis la progression sauvegardée au chargement du profil). On le force le temps de la
+/// course, puis on le remet dès qu'on a quitté la piste. Les arrivées sur une piste forcée ne sont pas
+/// transmises à la progression (sinon des objectifs validés débloqueraient d'autres pistes pour de bon).
+internal static class TrackAccess
+{
+    private sealed class Forced { public ObjectPublicInm_StObm_InStUnique Info; public EnumPublicSealedva5v2 Flags; public SubMountain Sub; public bool WasPlayable; }
+
+    private static readonly Dictionary<string, Forced> ForcedTracks = new();
+
+    public static bool IsForced(string trackId) => trackId != null && ForcedTracks.ContainsKey(trackId);
+
+    /// Choisit montagne puis piste dans le MountainManager (comme les menus). Faux + erreur si impossible.
+    public static bool Select(string trackId, out string error)
+    {
+        error = null;
+        var mm = Manager<MountainManager>.prop_T_0;
+        var list = mm?.field_Private_List_1_Mountain_0;
+        if (list == null) { error = "catalogue des pistes indisponible"; return false; }
+        for (int m = 0; m < list.Count; m++)
+        {
+            var mountain = list[m];
+            if (!trackId.StartsWith(mountain.m_mountainID + "_")) continue;
+            int idx = mountain.Method_Public_Virtual_Final_New_Int32_String_Boolean_0(trackId, false);
+            if (idx < 0) break;
+            if (!Unlock(mountain, trackId, out error)) return false;
+            mm.Method_Private_Void_Int32_0(m);   // montagne
+            mm.Method_Private_Void_Int32_1(idx); // piste
+            return true;
+        }
+        error = $"piste inconnue : {trackId}";
+        return false;
+    }
+
+    private static bool Unlock(Mountain mountain, string trackId, out string error)
+    {
+        error = null;
+        foreach (var sub in mountain.m_subMountains)
+            foreach (var info in sub.m_trackRouteInfos)
+            {
+                if (info.m_fullTrackRouteID != trackId) continue;
+                if (!sub.IsOwned) { error = "montagne non possédée (DLC)"; return false; }
+                var tod = MountainManager.prop_EnumPublicSealedva5v2_0;
+                if (info.Method_Public_Boolean_EnumPublicSealedva5v2_0(tod) || ForcedTracks.ContainsKey(trackId)) return true;
+                ForcedTracks[trackId] = new Forced
+                {
+                    Info = info, Flags = info.field_Private_ValueTypePublicSealedObUnique_0.field_Public_EnumPublicSealedva5v2_0,
+                    Sub = sub, WasPlayable = sub.IsPlayable,
+                };
+                info.Method_Public_Void_Boolean_0(true); // jour et nuit, en mémoire seulement
+                if (!sub.IsPlayable) sub.IsPlayable = true;
+                Log.Info($"course : {trackId} verrouillée chez toi, accès ouvert le temps de la course (heure du jour {(int)tod})");
+                return true;
+            }
+        error = $"piste introuvable : {trackId}";
+        return false;
+    }
+
+    /// Remet les verrous forcés des pistes où l'on n'est plus (appelé régulièrement).
+    public static void RestoreExcept(string currentTrack)
+    {
+        if (ForcedTracks.Count == 0) return;
+        foreach (var id in new List<string>(ForcedTracks.Keys))
+        {
+            if (id == currentTrack) continue;
+            var f = ForcedTracks[id];
+            ForcedTracks.Remove(id);
+            Log.Try("course : verrou remis", () =>
+            {
+                f.Info.Method_Public_Void_Boolean_0(false);
+                if (f.Flags != 0) f.Info.Method_Public_Void_Boolean_EnumPublicSealedva5v2_0(true, f.Flags);
+                if (!f.WasPlayable) f.Sub.IsPlayable = false;
+            });
+            Log.Info($"course : verrou de {id} remis comme avant");
+        }
+    }
+}
+
+/// Arrivée enregistrée par la progression du jeu (objectifs, déblocages) : ignorée sur une piste forcée.
+[HarmonyPatch(typeof(ProgressionDB), nameof(ProgressionDB.Method_Public_Void_String_GameMode_Int32_EnumPublicSealedva5v2_Single_Int32_PDM_0))]
+internal static class ForcedTrackProgressionPatch
+{
+    private static bool Prefix(string param_1)
+    {
+        if (!TrackAccess.IsForced(param_1)) return true;
+        Log.Info($"course : arrivée sur {param_1} (piste forcée) non comptée dans la progression");
+        return false;
+    }
+}

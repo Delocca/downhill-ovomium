@@ -19,6 +19,10 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="$(RefsDir)MelonLoader.dll" Private="false" />
+    <Reference Include="$(RefsDir)0Harmony.dll" Private="false" />
+    <Reference Include="$(RefsDir)Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(RefsDir)UnityEngine.UIModule.dll" Private="false" />
     <Reference Include="$(RefsDir)Il2CppInterop.Runtime.dll" Private="false" />
     <Reference Include="$(RefsDir)Il2CppInterop.Common.dll" Private="false" />
     <Reference Include="$(RefsDir)Il2Cppmscorlib.dll" Private="false" />

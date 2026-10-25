@@ -10,7 +10,7 @@ namespace LmdMulti.Game;
 /// Lecture de l'état du jeu (voir docs/game-api.md) : piste en cours, nom affiché, compte Steam.
 internal static class GameInfo
 {
-    private const int StateOnTrack = 100;
+    public const int StateOnTrack = 100;
     private static readonly Dictionary<string, string> TrackNames = new();
 
     public static int State() => (int)GameStateManager.prop_EnumNPublicSealedva5vUnique_0;
@@ -25,6 +25,17 @@ internal static class GameInfo
             return string.IsNullOrEmpty(id) ? null : id;
         }
         catch (Il2CppInterop.Runtime.Il2CppException) { return null; } // démarrage : gestionnaires pas encore créés
+    }
+
+    /// Piste sélectionnée dans les menus (celle que « jouer » lancerait), ou null.
+    public static string SelectedTrackId()
+    {
+        try
+        {
+            string id = MountainManager.Method_Public_Static_ObjectPublicInm_StObm_InStUnique_0()?.m_fullTrackRouteID;
+            return string.IsNullOrEmpty(id) ? null : id;
+        }
+        catch (Il2CppInterop.Runtime.Il2CppException) { return null; }
     }
 
     /// Nom localisé (« Sierra Rivera | Piste 2 »), mis en cache ; l'ID brut si indisponible.

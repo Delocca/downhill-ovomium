@@ -94,8 +94,16 @@ Méthode vérifiée, rendu compris (écran virtuel, 2026-10-25 : marionnettes vi
 
 Pièges :
 - Écrire seulement `ActiveFullTrackRouteID` dans le profil ne change pas la sélection en cours de session. Le profil n'est relu qu'au lancement du jeu.
-- Pistes verrouillées : `IsPlayable`/`IsOwned` existent par montagne (Eldfjall/`IS` = DLC non possédé ici). Le verrou par piste n'est pas identifié. Il faudra vérifier que chaque client possède ou a débloqué la piste avant de la lancer.
-- Le temps de chargement varie : un essai sur `RO_01_A3` n'avait pas fini de charger au bout de 13 s.
+- Le temps de chargement varie : un essai sur `RO_01_A3` n'avait pas fini de charger au bout de 13 s ; en course, 3 s depuis le menu ou l'écran titre (`CA_01_A2`, `RO_01_A4`, `CA_01_A3`). **L'état « en piste » (100, route posée) arrive avant la fin de l'écran de chargement** : attendre que `LoadingScreenOverlay` (UI.Screens, `field_Private_CanvasGroup_0.alpha`) ait disparu [vérifié].
+- Pendant un chargement, `PlayManager.prop_TrackRoute_0` peut encore donner l'ancienne piste un instant [vérifié].
+
+**Verrous** (trouvés par désassemblage de `GameAssembly.dll`, contournement vérifié en jeu le 2026-10-25 sur `RO_01_A4`, verrouillée dans la sauvegarde d'Edia) :
+- **Par piste** : masque d'heures du jour débloquées dans l'info de piste (`ObjectPublicInm_StObm_InStUnique`) : `info.field_Private_ValueTypePublicSealedObUnique_0.field_Public_EnumPublicSealedva5v2_0` (flags : 1 jour, 2 nuit [déduit]). `info.Method_Public_Boolean_EnumPublicSealedva5v2_0(tod)` = débloquée pour cette heure (et sous-montagne jouable) ; `Method_Public_Void_Boolean_0(b)` = masque à 3 ou 0 ; `Method_Public_Void_Boolean_EnumPublicSealedva5v2_0(b, tod)` = ajoute/retire des bits. Heure courante : `MountainManager.prop_EnumPublicSealedva5v2_0`.
+- Ce masque n'est **pas sauvegardé** : `ProgressionDB.Method_Public_Void_0()` le recalcule au chargement du profil depuis la progression (`PlayerProfileParameter.ProgressionSettings`). Le forcer en mémoire est donc temporaire ; LmdMulti le remet comme avant dès qu'on a quitté la piste [vérifié : « verrou remis »].
+- `PlayManager.Method_Private_Void_PDM_3` (lancement de manche) **refuse** une piste verrouillée (exception) : contourner seulement les menus ne suffit pas [asm].
+- **Par sous-montagne** : `SubMountain.IsPlayable` (faux tant que le tutoriel n'est pas fini, setter disponible), `IsOwned` (DLC). Les « Piste 5 » (`*_02_A1`, sous-montagne `02`) ne sont pas possédées ici : `RO_02_A1` refusée (« montagne non possédée ») [vérifié] ; ne pas forcer (contenu sans doute absent).
+- **Progression** : à l'arrivée, le tracker appelle `ProgressionDB.Method_Public_Void_String_GameMode_Int32_EnumPublicSealedva5v2_Single_Int32_PDM_0(id, mode, véhicule, tod, temps, chutes)`, qui valide les objectifs (et peut débloquer d'autres pistes pour de bon). LmdMulti l'annule par un prefix sur une piste forcée [vérifié : appel intercepté]. L'écran de résultats du jeu affiche quand même les défis de la manche.
+- `GameConfigSettings.unlockEverything` existe mais n'est lu nulle part [asm] : inutilisable.
 - Non utilisés par le jeu lors des essais : `PlaySceneManager.Method_Public_Void_String_String_…_PDM_0` et `PlayManager.Method_Public_Static_Void_Int32_0`. Ne pas s'en servir.
 
 ## 5. Course : départ, checkpoints, arrivée, chrono, restart
@@ -105,22 +113,21 @@ Pièges :
 | Checkpoints | `route.m_checkpoints[]` (`TrackCheckpoint`, `Tracks`) : `[0]` = départ (`GameObject_Start`/`GameObject_Checkpoint (4)`…), dernier = `GameObject_FinishLine` ; `.m_hasSpawnPoint`, `.m_spawnTransform` | [vérifié] |
 | Mise en place d'une manche | séquence observée au lancement et au restart : `PlayManager.Method_Private_Void_TrackRoute_PDM_0(route)`, puis `PlayerManager.Method_Public_Static_Void_Transform_0(spawn)` ×2, puis `PlayerManager.Method_Public_Static_Void_Boolean_0(true)` | [vérifié] |
 | Téléporter au départ | `PlayerManager.Method_Public_Static_Void_Transform_0(route.m_checkpoints[0].m_spawnTransform)` (« SetToTransform », d'après le nom de lambda) | [vérifié] (appel accepté, effet visuel non vu) |
-| Bloquer / débloquer le vélo | `PlayerManager.Method_Public_Static_Void_Boolean_0(bool)` (« LockMovement ») : `true` pendant l'intro ; `false` libère le vélo | [vérifié] |
+| Bloquer / débloquer le vélo | `PlayerManager.Method_Public_Static_Void_Boolean_0(bool)` (« LockMovement ») : `true` à la mise en place ; `false` libère le vélo. **Le jeu n'appelle `false` qu'au premier appui du joueur** (via `PlayManager.Method_Private_Void_PDM_5`, qui met aussi `field_Private_Boolean_0`) : un prefix qui l'annule garde le vélo au départ [vérifié] | [vérifié] |
 | Restart complet | `Resources.FindObjectsOfTypeAll<PauseScreen>()[0].OnRestartRun()` (re-spawn + lock) ; `OnRestartCheckpoint()` existe aussi | [vérifié] / [signatures] |
 | Vélo contrôlable | `Manager<PlayManager>.prop_T_0.field_Private_Boolean_0` (vrai après l'intro, faux en crash ; d'après LMD-Custom-Rides) | [déduit] |
 | Tracker de manche | `HighscoreManager.prop_ObjectPublicBoGaObInSiStObDi2LiUnique_0` (voir détail ci-dessous) | lecture [vérifié] |
-| Section franchie | patch de `tracker.Method_Public_Void_Int32_Single_PDM_0(int section, float temps)` | [déduit] (mod LMD-Custom-Rides) |
-| Arrivée | patch de `tracker.Method_Public_Void_PDM_0()` | [déduit] (mod LMD-Custom-Rides) |
+| Section franchie | patch de `tracker.Method_Public_Void_Int32_Single_PDM_0(int section, float temps)` : section = 1, 2… (la ligne d'arrivée compte pour la dernière), temps de la section en s ; précédé de `TrackCheckpoint.Method_Public_Virtual_Void_Int32_Boolean_0` | [vérifié] |
+| Arrivée | patch de `tracker.Method_Public_Void_PDM_0()`, appelé une fois au franchissement de la ligne (après la dernière section) | [vérifié] |
+| Porte d'un checkpoint | `cp.transform` porte un `BoxCollider` trigger d'environ 9 × 7 × 11 m ; y téléporter le vélo (après le premier appui) déclenche section ou arrivée. Le `m_spawnTransform` est à côté de la porte : y téléporter ne déclenche rien et affiche « point de contrôle manqué » au suivant | [vérifié] |
 | Chrono affiché | `FindObjectOfType<PlayScreen>().m_timePanelText.text` (« 0.00 ») | [vérifié] |
 
 Détail du tracker de manche :
 - Au départ : `field_Private_Int32_0` = sections passées, vaut −1 ; `field_Private_List_1_UInt32_0[0]` = temps total en ms, vaut 999998976 (non défini) ; `prop_Boolean_0` = fini.
-- Pendant la manche, les valeurs n'ont pas été vues.
+- **Piège** : ces champs gardent les valeurs de la manche précédente (fini = vrai, sections = 8) jusqu'au premier appui du joueur sur la manche suivante, même après un changement de piste [vérifié : fausse arrivée à 2 s]. Utiliser les patchs section/arrivée, pas les champs.
+- Le chrono du jeu (et sa manche) ne démarre qu'au premier appui du joueur.
 
-Recommandation pour la v1 : chrono et classement calculés par le mod lui-même.
-- Départ : fin du compte à rebours, avec `LockMovement(false)`.
-- Arrivée : patch « arrivée » du tracker, ou entrée dans le trigger `GameObject_FinishLine`.
-- Le chrono du jeu servira de contrôle.
+Choix de LmdMulti : chrono et classement calculés par le mod (départ commun = fin de son compte à rebours) ; sections et arrivée par patchs du tracker.
 
 ## 6. Steam et profil
 
@@ -166,13 +173,15 @@ Pour la v1 : marionnettes sans physique (§ 3), ce qui est plus simple et plus s
 - **Ancien contournement** : `LMD_SCREEN=xvfb LMD_ARGS="-batchmode -nographics" tools/lmd-virtual.sh start`.
   - Menus, profil, chargement de pistes, vélo et ragdoll fonctionnent : tout ce qui est marqué [vérifié] l'a été ainsi.
   - En revanche, le sol n'a pas de collision dans ce mode : au déblocage, le vélo tombe et crashe (`FallTime`).
-- **Encore à vérifier en roulant** (désormais faisable sur l'écran virtuel, avec `tools/lmd-keys.sh`) ; le rendu des marionnettes l'a été :
-  - événements section / arrivée / checkpoint et valeurs du chrono en roulant ;
+- **Encore à vérifier en roulant** (désormais faisable sur l'écran virtuel, avec `tools/lmd-keys.sh`) ; le rendu des marionnettes l'a été, sections et arrivée aussi (par téléportation dans les portes, 2026-10-25) :
+  - arrivée en roulant vraiment jusqu'au bout (une descente complète au clavier par script est irréaliste : chutes) ;
   - restart au checkpoint ;
   - effet visuel de `tostart`.
 - **Pilote auto** : un patch Harmony sur `InputMethod_AdaptiveSwitch.Method_Public_Virtual_Void_byref_Single_byref_Single_0` (paramètres `out float`) lève des `NullReferenceException` dans le trampoline Il2CppInterop. Il a été retiré.
 
 Mod explorateur : `src/LmdExplorer`.
 - Commandes : une par ligne dans `UserData/LmdExplorer/cmd.txt` ou `/tmp/lmdexplorer-cmd.txt`.
-- Liste : `dump`, `status`, `puppet`, `screens`, `mainstart`, `start`, `menu`, `catalogue`, `sel`, `select <ID>`, `restart`, `restartcp`, `lock`, `unlock`, `tostart`, `call <Type> <Méthode> [args]`.
-- Fichier drapeau `autostart` : lance la piste sélectionnée depuis le menu.
+- Liste : `dump`, `status`, `puppet`, `screens`, `mainstart`, `start`, `menu`, `catalogue`, `sel`, `select <ID>`, `restart`, `restartcp`, `lock`, `unlock`, `tostart`, `tocp [N|gN|f]` (respawn du checkpoint N, porte N, ligne d'arrivée), `timer`, `call <Type> <Méthode> [args]`.
+- Touches : F11 dump, F12 marionnette de test (F5-F10 sont à LmdMulti).
+- Fichiers drapeaux : `autostart` lance la piste sélectionnée depuis le menu ; `autodump` fait dump + marionnette de test à la première apparition du vélo.
+- ⚠ Une arrivée obtenue par téléportation peut être enregistrée par le jeu (records, classements en ligne, succès) : voir § 5 « Arrivées de test » avant tout essai.

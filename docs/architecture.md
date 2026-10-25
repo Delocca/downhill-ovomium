@@ -1,6 +1,6 @@
-# Architecture de LmdMulti (v0 : fantômes réseau)
+# Architecture de LmdMulti (v0.2 : fantômes réseau et mode course)
 
-Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son propre vélo ; les autres apparaissent comme des marionnettes sans collision, avec leur pseudo au-dessus. Pas encore de course (prévue en v1).
+Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son propre vélo ; les autres apparaissent comme des marionnettes sans collision, avec leur pseudo au-dessus. N'importe qui peut lancer une course (F6) : les autres reçoivent une invitation, la piste se charge toute seule chez ceux qui acceptent, départ commun après un compte à rebours, classement en direct et tableau final (voir « Mode course »).
 
 ## Dossiers
 
@@ -8,19 +8,21 @@ Mod MelonLoader pour Lonely Mountains: Downhill 1.6.0. Chaque joueur simule son 
 |---|---|
 | `src/LmdMulti.Core/` | Cœur sans Unity, partagé par le mod, le bot et les tests : protocole, réseau, interpolation, enregistrements |
 | `src/LmdMulti.Core/Protocol/` | Format binaire des messages (`Messages`, `PacketIO`, `QuatCodec`, `ProtocolInfo` = version, squelette transmis) |
-| `src/LmdMulti.Core/Net/` | `UdpNode` (socket UDP + fil réseau), `PeerTable` (pairs connus), `Endpoints` (broadcast, IP manuelles) |
+| `src/LmdMulti.Core/Net/` | `UdpNode` (socket UDP + fil réseau), `PeerTable` (pairs connus), `Endpoints` (broadcast, IP manuelles), `ReliableChannel` (messages fiables), `ClockSync` (décalage d'horloge entre pairs) |
+| `src/LmdMulti.Core/Race/` | Course sans Unity : `RaceHost` / `RaceGuest` (machines à états de l'hôte et d'un invité), `RaceMessages` (format), `RaceTypes` (règles, phases, classement) |
 | `src/LmdMulti.Core/Poses/` | `PoseFrame` (une pose), `SnapshotBuffer` (interpolation retardée), `PoseRecorder` (fichiers .lmdrec) |
 | `src/LmdMulti/` | Le mod : `LmdMultiMod` (point d'entrée, relie tout), `Config` (MelonPreferences), `Log` |
 | `src/LmdMulti/Game/` | Lecture de l'état du jeu : piste en cours, nom de piste, pseudo Steam |
 | `src/LmdMulti/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
+| `src/LmdMulti/Race/` | Course côté jeu : `RaceController` (session, touches, réseau), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/LmdMulti/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications |
 | `src/LmdMulti/Diagnostics/` | Capture d'écran (F10), statistiques (réseau, images/s, coût du mod) et relevé des os en mode `DebugLog` |
-| `tools/LmdBot/` | Faux joueur(s) en console (Linux) : orbite autour du joueur ou rejeu d'un .lmdrec, jusqu'à 64 dans un processus |
+| `tools/LmdBot/` | Faux joueur(s) en console (Linux) : orbite autour du joueur ou rejeu d'un .lmdrec, jusqu'à 64 dans un processus ; pair de course simulé (`RaceBot`) |
 | `tools/lmd-virtual.sh`, `tools/lmd-keys.sh` | Jeu sur écran virtuel (`:98`) et pilotage au clavier : entrer en piste, rouler en filmant, captures |
 | `tests/LmdMulti.Tests/` | Tests xUnit du cœur (`dotnet test tests/LmdMulti.Tests`) |
 | `src/LmdExplorer/` | Outil de dev séparé (exploration de l'API du jeu), pas livré aux joueurs |
 
-Le mod compile les sources du cœur directement (fichiers liés dans `LmdMulti.csproj`) : **une seule DLL**, `LmdMulti.dll`, à copier dans `<jeu>/Mods/`. Aucune dépendance externe (UDP maison : LiteNetLib n'apporterait que la fiabilité, inutile pour des poses envoyées en continu).
+Le mod compile les sources du cœur directement (fichiers liés dans `LmdMulti.csproj`) : **une seule DLL**, `LmdMulti.dll`, à copier dans `<jeu>/Mods/`. Aucune dépendance externe : UDP maison, avec une petite couche fiable (`ReliableChannel`) pour les rares messages de course ; les poses, envoyées en continu, n'en ont pas besoin.
 
 ## Flux
 
@@ -45,16 +47,23 @@ Fil principal (Unity, OnUpdate)                     Fil réseau (UdpNode)
 - Annonces aussi envoyées en unicast aux IP manuelles (`ManualPeers`, ex. Tailscale) et à chaque pair connu : il suffit qu'un des deux entende l'autre pour que les deux se découvrent.
 - Les poses partent en unicast vers chaque pair (le broadcast Wi-Fi à 25 Hz est peu fiable).
 
-## Protocole (version 1)
+## Protocole (version 2)
 
-Petit-boutiste. En-tête de 12 octets **figé pour toutes les versions** : `'L' 'M'`, version (u8), type (u8), id d'instance de l'émetteur (u64, aléatoire à chaque lancement). Un paquet d'une autre version n'est jamais décodé : le pair est listé « version incompatible » et une notification s'affiche.
+Petit-boutiste. En-tête de 12 octets **figé pour toutes les versions** : `'L' 'M'`, version (u8), type (u8), id d'instance de l'émetteur (u64, aléatoire à chaque lancement). Un paquet d'une autre version n'est jamais décodé : le pair est listé « version incompatible » et une notification s'affiche. La v2 (mod 0.2.0) n'est donc pas compatible avec la v1 (mod 0.1.0) : tout le monde doit mettre à jour, et le panneau le dit.
 
 | Type | Contenu après l'en-tête |
 |---|---|
 | 1 Announce | SteamId u64, pseudo (u8 longueur + UTF-8, ≤ 48 o), piste (≤ 32 o, vide au menu), en piste u8, version du mod (≤ 16 o) |
 | 2 Pose | temps émetteur ms u32, drapeaux u8 (1 = ragdoll, 2 = os présents), racine : position 3×f32 + rotation u32 ; si os : 31 rotations u32, masque de positions u32, puis 3×half par os du masque |
-| 3 Ping / 4 Pong | temps de l'émetteur du ping u32 (renvoyé tel quel) |
+| 3 Ping | temps de l'émetteur u32 |
+| 4 Pong | temps du ping u32 (renvoyé tel quel), heure du répondeur u32 (v2) |
 | 5 Bye | rien : départ propre, le fantôme disparaît tout de suite |
+| 6 Reliable (v2) | flux u32, numéro u32, contenu (message de course) |
+| 7 Ack (v2) | flux u32, numéro u32 accusé |
+
+**Messages fiables** (`ReliableChannel`) : chaque message vers un pair reçoit un numéro (1, 2, 3…), est renvoyé toutes les 150 ms jusqu'à son accusé, abandonné après 15 s. Le récepteur accuse tout, livre dans l'ordre, ignore les doublons ; un trou qui dure plus de 3 s est sauté (l'émetteur a abandonné). Le « flux » est un nombre aléatoire tiré par l'émetteur pour chaque pair : s'il oublie ce pair (départ, expiration) et recommence à 1, le nouveau flux remet la réception à zéro au lieu de passer pour des doublons. Testé avec 30 % de paquets perdus (tests, `LmdBot --loss 0.3`).
+
+**Horloges** : chaque pong donne un échantillon de décalage (heure du répondeur − (envoi du ping + aller-retour / 2)) ; `ClockSync` garde celui de plus petit aller-retour parmi les 12 derniers (erreur ≤ moitié de cet aller-retour, ~1 ms en LAN).
 
 - **Racine** = monde de `bike/Bind_JNT` (vélo normal) ou de `RagDoll(Clone)/bike/Bind_JNT` (pendant un crash) : même arbre, mêmes noms d'os.
 - **Rotations** : « smallest three » sur 32 bits (erreur < 0,25°).
@@ -65,6 +74,22 @@ Petit-boutiste. En-tête de 12 octets **figé pour toutes les versions** : `'L' 
 
 Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `InterpolationDelayMs` (100 ms). L'horloge de l'émetteur est recalée sur la nôtre par le décalage minimal (réception − émission) vu sur la fenêtre gardée. On interpole entre les deux poses qui encadrent l'instant visé (positions linéaires, rotations nlerp). Sans pose plus récente, on fige la dernière. Un saut de plus de 15 m (respawn) n'est pas interpolé. Si l'horloge de l'émetteur repart en arrière (redémarrage), le tampon est vidé.
 
+## Mode course
+
+**Touches** (pas de configuration nécessaire) : **F6** « course » = lancer une course sur la piste où l'on est (ou celle sélectionnée au menu) / accepter une invitation / (hôte) partir sans attendre les retardataires / fermer les résultats. **F5** = refuser une invitation / (hôte) annuler avant le départ / abandonner (deux appuis en 3 s).
+
+**Déroulé** (logique dans `Core/Race`, testée sans Unity ; `RaceTypes.RaceRules` pour les valeurs) :
+1. **Invitation** : celui qui appuie sur F6 devient l'hôte et invite tous les joueurs compatibles détectés (16 coureurs au plus). Bandeau central chez eux : hôte, piste, « F6 rejoindre · F5 refuser », 15 s pour répondre. Un joueur déjà en course refuse automatiquement.
+2. **Chargement** : chez chaque coureur (hôte compris), `TrackLoader` amène au départ, d'où qu'il soit : même piste → « recommencer la tentative » ; autre piste → retour au menu ; écran titre → « commencer » ; puis sélection et lancement. Une piste verrouillée chez lui est ouverte temporairement (`TrackAccess`, voir `game-api.md` § 4). Une montagne non possédée (DLC) est refusée avec un message.
+3. **Attente** : vélo bloqué au départ (patch de `LockMovement(false)`) ; « prêt » 1,5 s après la disparition de l'écran de chargement. Chaque invité a 30 s depuis son acceptation pour être prêt, sinon il est exclu (« la course est partie sans toi »). L'hôte peut partir sans attendre (F6). Personne de prêt : course annulée.
+4. **Départ** : l'hôte fixe l'heure du départ dans son horloge (maintenant + 4,5 s), chacun la convertit dans la sienne grâce au décalage mesuré (`ClockSync`) ; « Prêts ? », puis 3-2-1 géant au centre, puis « GO ! » : déblocage du vélo. Mesuré en local : GO à 7-8 ms de l'heure prévue.
+5. **Course** : chrono du mod (depuis le départ commun, il continue pendant crashs et restarts) ; sections franchies et arrivée signalées par patchs du tracker de manche du jeu. Classement en direct : arrivés par temps, puis en course par checkpoints franchis (le premier à les franchir devant), puis abandons. Quitter la piste ou le jeu = abandon.
+6. **Fin** : quand tout le monde est arrivé ou a abandonné, ou 60 s après la première arrivée (les autres : abandon), ou 30 min au plus. Tableau final (place, temps, écart au premier, abandons) au centre pendant 30 s (F6 pour fermer).
+
+**Messages de course** (dans un message fiable ; type u8, id de course u32, puis) : `Invite` piste, pseudo de l'hôte ; `Reply` accepte u8 ; `Status` (invité → hôte) état u8, checkpoints u8, temps ms u32 ; `Standings` (hôte → coureurs, à chaque changement) révision u32, phase u8, raison u8, piste, id de l'hôte u64, heure de l'hôte, départ, fin (u32 ms de l'horloge de l'hôte, 0 = aucune), puis par coureur id u64, pseudo (≤ 32 o), état, checkpoints, temps ; `Cancel` raison u8. L'hôte fait foi ; un invité garde son propre état s'il est en avance sur le dernier classement reçu (ex. arrivé localement).
+
+**Choix écartés** : départ par « dans N ms » (faussé par les renvois de messages), horloge commune par NTP (inutile : le ping existant suffit), chrono et arrivée lus dans les champs du tracker du jeu (ils gardent la manche précédente tant que le joueur n'a pas démarré : fausse arrivée observée), « prêt » sur la fin de l'intro (le jeu ne libère le vélo qu'au premier appui du joueur).
+
 ## Outils de test
 
 - **Mode écho** (`EchoMode`, touche F9) : nos poses repartent vers `127.0.0.1` et reviennent comme celles d'un pair « (écho) », affiché avec `EchoDelaySeconds` (2 s) de retard. Toute la chaîne capture → encodage → socket → décodage → interpolation → marionnette est exercée sans second PC.
@@ -74,17 +99,19 @@ Style Gaffer On Games : on affiche chaque pair tel qu'il était il y a `Interpol
   - `--replay latest` rejoue le plus récent enregistrement utilisable (≥ 2 s) du jeu, sur sa piste, sans l'attente du départ (le rejeu commence 1 s avant que le vélo ne bouge).
   - `--count N` simule N joueurs dans un seul processus (ports 47710…, pseudos `Bot-1`…) : orbites de rayons croissants ou rejeux décalés de 1,5 s. Sert aux mesures de performance.
   - Il affiche ce qu'il reçoit (pseudo, piste, ping, poses, crash). Arrêt : Ctrl+C ou `pkill -f LmdBot` (SIGTERM), avec « Bye » dans les deux cas.
+  - **Course** (même logique que le mod, `RaceHost` / `RaceGuest`) : `--race join` accepte les invitations, « charge » `--race-load` s (3), roule `--race-time` s (25, +4 s par bot) en franchissant 7 checkpoints, `--race-dnf` abandonne à mi-course, `--race-decline` refuse. `--race host --race-track ID` lance une course (une fois) 3 s après avoir vu un vrai joueur. `--loss 0.3` jette 30 % des paquets émis. Les bots n'entendent que le jeu (pas les autres bots) : pour une course à plusieurs bots, c'est le jeu qui doit être l'hôte.
 - **Écran virtuel** (rendu complet sans toucher au bureau) : `tools/lmd-virtual.sh start|stop|shot`, puis `tools/lmd-keys.sh enter` (lance le jeu si besoin et entre dans la piste sélectionnée au clavier), `drive NOM IPS Up:1.3 Up+Left:0.8 …` (roule en filmant, planche d'images dans `/tmp/NOM-montage.png`), `restart`, `menu`, `key`, `shot`. Voir l'en-tête du script pour les touches du jeu.
 - **Session bureau** : `tools/desktop-session.sh` (déploie, lance, guide, nettoie ; journal dans `/tmp/lmd-session/`).
 
 ## Configuration
 
-Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`.
+Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) : `Port`, `ManualPeers`, `Nickname` (vide = pseudo Steam), touches `RaceKey` F6 / `RaceQuitKey` F5 / `PanelKey` F8 / `StyleKey` F7 / `EchoKey` F9 / `CaptureKey` F10, `ShowPanel`, `EchoMode`, `EchoDelaySeconds`, `SendRateHz` (25), `InterpolationDelayMs` (100), `GhostStyle`, `RecordPoses`, `DebugLog`.
 
 ## Interface
 
 - **Couleur par joueur** : attribuée dans l'ordre d'arrivée (teintes espacées du nombre d'or), ambre pour l'écho. Le fantôme, son pseudo et sa pastille dans le panneau ont la même couleur. Locale à chaque PC.
-- **Aspect des fantômes** (`GhostStyle`, F7 pour essayer) : `Translucent` (défaut) = semi-transparent, non éclairé, sans ombre, nuancé de la couleur du joueur (shader `Legacy Shaders/Particles/Alpha Blended` × couleurs de sommets du modèle) ; `Tint` = opaque, couleurs multipliées (effet discret) ; `None`.
+- **Aspect des fantômes** (`GhostStyle`, F7 pour essayer) : `None` (défaut, « normal ») = comme le vélo local ; `Translucent` = semi-transparent, non éclairé, sans ombre, nuancé de la couleur du joueur (shader `Legacy Shaders/Particles/Alpha Blended` × couleurs de sommets du modèle) ; `Tint` = opaque, couleurs multipliées (effet discret). Une config existante garde sa valeur.
+- **Course** : panneau en haut à gauche (sous les compteurs du jeu en piste) : piste, état ou chrono, coureurs (pastille = couleur du fantôme, moi en blanc et en gras), aide des touches. Compte à rebours, « GO ! » et « Arrivée ! temps · place » en grand au centre ; invitation en bandeau central ; résultats au milieu de l'écran (le haut est pris par l'écran de résultats du jeu).
 - **Pseudos** : au-dessus de la tête ; au-delà de 30 m, ils pâlissent (jusqu'à 55 % à 150 m) sans disparaître et affichent la distance au joueur. Masqués quand le menu pause du jeu est ouvert.
 - **Panneau** (F8) : en piste, les joueurs de la piste (8 au plus, puis « + N autres ») et un résumé « N ailleurs » ; au menu, tout le monde avec sa piste. Sous la barre d'onglets du jeu dans les menus. Taille des textes : proportionnelle à la hauteur d'écran, avec un plancher pour les petites fenêtres.
 
@@ -102,9 +129,10 @@ Fichier `<jeu>/UserData/LmdMulti.cfg` (créé au premier lancement, commenté) :
 
 Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même PC). Coût du mod : environ 0,06 ms par fantôme visible (les fantômes hors champ ne recopient que leur racine), soit 6 % d'une image à 60 images/s avec 15 joueurs. Aucune pose « figée » (paquet en retard) en local.
 
-## Limites connues (v0)
+## Limites connues
 
 - Les fantômes ont l'apparence (vélo, tenue) du joueur local : l'apparence de chacun n'est pas encore transmise (voir `game-api.md` § 3). Le style translucide le masque en partie.
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
 - Windows : au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés).
-- Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; pseudos à 1080p et plus.
+- Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; pseudos et affichage de course à 1080p et plus.
+- Course : un seul hôte coordonne ; s'il quitte le jeu, la course s'arrête chez les autres (« l'hôte a quitté »). Pas de manette pour les touches de course (clavier F5/F6).

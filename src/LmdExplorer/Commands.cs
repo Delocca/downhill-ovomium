@@ -52,6 +52,8 @@ internal static class Commands
         ["lock"] = _ => PlayerManager.Method_Public_Static_Void_Boolean_0(true),
         ["unlock"] = _ => PlayerManager.Method_Public_Static_Void_Boolean_0(false),
         ["tostart"] = _ => PlayerManager.Method_Public_Static_Void_Transform_0(StartTransform()),
+        ["tocp"] = n => PlayerManager.Method_Public_Static_Void_Transform_0(CheckpointTransform(n)),         // tocp [N] (défaut : avant-dernier ; f = arrivée)
+        ["timer"] = _ => Out.Info(TrackProbe.TimerLine()),
         ["call"] = spec => Invoker.Call(spec),
     };
 
@@ -79,6 +81,26 @@ internal static class Commands
     {
         var all = Resources.FindObjectsOfTypeAll<PauseScreen>();
         return all.Length > 0 ? all[0] : null;
+    }
+
+    /// Point de respawn du checkpoint N (défaut : le dernier qui en a un avant l'arrivée) : pour rouler
+    /// seulement la dernière section et tester la détection d'arrivée.
+    private static Transform CheckpointTransform(string arg)
+    {
+        var cps = PlayManager.prop_TrackRoute_0.m_checkpoints;
+        if (arg == "f") return cps[cps.Length - 1].transform; // dans la ligne d'arrivée
+        if (arg != null && arg.StartsWith("g")) // gN : dans la porte du checkpoint N (franchissement)
+        {
+            var gate = cps[int.Parse(arg.Substring(1))];
+            foreach (var col in gate.GetComponentsInChildren<Collider>(true))
+                Out.Info($"porte {gate.name} : {col.name} trigger={col.isTrigger} centre={col.bounds.center} taille={col.bounds.size}");
+            return gate.transform;
+        }
+        int n = string.IsNullOrEmpty(arg) ? cps.Length - 2 : int.Parse(arg);
+        while (n > 0 && !cps[n].m_hasSpawnPoint) n--;
+        var cp = cps[n];
+        Out.Info($"vers cp[{n}] = {cp.name} spawn={cp.m_spawnTransform?.position} (arrivée {cps[cps.Length - 1].transform.position})");
+        return cp.m_spawnTransform != null ? cp.m_spawnTransform : cp.transform;
     }
 
     /// Point de spawn du premier checkpoint de la route courante (= départ, supposé).

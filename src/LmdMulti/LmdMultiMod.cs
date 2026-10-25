@@ -3,6 +3,7 @@ using LmdMulti.Core.Net;
 using LmdMulti.Diagnostics;
 using LmdMulti.Game;
 using LmdMulti.Ghosts;
+using LmdMulti.Race;
 using LmdMulti.UI;
 using MelonLoader;
 using UnityEngine;
@@ -12,13 +13,14 @@ using UnityEngine;
 
 namespace LmdMulti;
 
-/// Point d'entrée : relie réseau (Core.Net), fantômes (Ghosts) et interface (UI).
+/// Point d'entrée : relie réseau (Core.Net), fantômes (Ghosts), course (Race) et interface (UI).
 /// Tout ce qui touche à Unity tourne ici, dans le fil principal ; le réseau a son propre fil.
 public class LmdMultiMod : MelonMod
 {
-    public const string Version = "0.1.0";
+    public const string Version = "0.2.0";
 
     private UdpNode _node;
+    private RaceController _race;
     private readonly GhostManager _ghosts = new();
     private readonly PoseCapture _capture = new();
     private LocalSender _sender;
@@ -43,6 +45,7 @@ public class LmdMultiMod : MelonMod
         _node = new UdpNode(options);
         if (!_node.Start()) _toasts.Show($"LmdMulti : réseau indisponible ({_node.Status})", Color.red);
         _node.Echo = Config.EchoMode.Value;
+        _race = new RaceController(_node, _toasts);
         Log.Info($"prêt : {_node.Status}, protocole v{Core.Protocol.ProtocolInfo.Version}, {options.ManualPeers.Count} IP manuelle(s), écho={_node.Echo}, config {Config.FilePath}");
     }
 
@@ -55,6 +58,7 @@ public class LmdMultiMod : MelonMod
         Log.Try("état local", () => RefreshLocal(now));
         Log.Try("événements réseau", DrainEvents);
         Log.Try("touches", HandleKeys);
+        Log.Try("course", () => { _race.HandleKeys(now, _myName); _race.Update(now); });
         // Capture et application dans Update : les contraintes Unity (cheveux, phares) suivent dans la même image.
         Log.Try("envoi pose", () => _sender.Tick(_node, _myTrack, now, _tools.PositionMask));
         Log.Try("fantômes", () => _ghosts.Update(_myTrack, _capture.BikeObject, now));
@@ -78,6 +82,7 @@ public class LmdMultiMod : MelonMod
             // Menu pause du jeu : les pseudos passeraient par-dessus ses boutons.
             if (_myTrack != null && !GameInfo.IsPaused()) NameLabels.Draw(_ghosts.Labels(), me);
             _panel.Draw();
+            RaceHud.Draw(_race, NetClock.NowMs);
             _toasts.Draw();
         });
         _cost.Stop();
@@ -88,6 +93,7 @@ public class LmdMultiMod : MelonMod
 
     private void Shutdown()
     {
+        _race?.Shutdown(NetClock.NowMs);
         _sender?.Dispose();
         _node?.Dispose(); // envoie « Bye » : les autres retirent notre fantôme tout de suite
     }
@@ -123,8 +129,10 @@ public class LmdMultiMod : MelonMod
                 case NetEventKind.PeerChanged: _ghosts.OnPeer(e.Peer); Log.Info($"{e.Peer.Name} : {(e.Peer.OnTrack ? e.Peer.Track : "menu")}"); break;
                 case NetEventKind.PeerLeft:
                     _ghosts.OnLeft(e.PeerId);
+                    _race.OnPeerLeft(e.PeerId, NetClock.NowMs);
                     if (!e.Peer.IsEcho) _toasts.Show($"{e.Peer.Name} est parti", new Color(0.8f, 0.8f, 0.8f));
                     break;
+                case NetEventKind.Message: _race.OnMessage(e.PeerId, e.Data, NetClock.NowMs, _myName); break;
                 case NetEventKind.Log: Log.Warn(e.Text); break;
             }
         }

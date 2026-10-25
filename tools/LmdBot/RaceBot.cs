@@ -19,6 +19,7 @@ internal sealed class RaceBot
     private IRaceSession _session;
     private double _acceptAt = double.NaN, _readyAt = double.NaN, _nextHostAt = double.NaN;
     private bool _hosted;
+    private RacePhase _lastPhase;
 
     public RaceBot(BotOptions o, UdpNode node)
     {
@@ -63,9 +64,12 @@ internal sealed class RaceBot
         if (_session == null) return;
         if (now >= _acceptAt && _session is RaceGuest g) { _acceptAt = double.NaN; g.Accept(); _readyAt = now + _o.RaceLoadS * 1000; }
         if (now >= _readyAt) { _readyAt = double.NaN; _loaded = true; _session.Ready(now); Program.Say($"{_o.Name} : prêt"); }
-        var phase = _session.View.Phase;
         _session.Tick(now);
-        if (phase != _session.View.Phase) Program.Say($"{_o.Name} : course {Describe(_session.View)}");
+        if (_lastPhase != _session.View.Phase) // changé ici ou par un message de l'hôte
+        {
+            _lastPhase = _session.View.Phase;
+            Program.Say($"{_o.Name} : course {Describe(_session.View)}");
+        }
         if (_session.View.Phase == RacePhase.Racing) Ride(now);
     }
 
