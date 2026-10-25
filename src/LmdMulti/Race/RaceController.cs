@@ -155,7 +155,7 @@ internal sealed class RaceController
         {
             g.Accept();
             _run.Begin(g.View.Track, now);
-            _toasts.Show($"Course acceptée : chargement de {GameInfo.TrackName(g.View.Track)}", Info, "race");
+            Log.Info($"course acceptée : chargement de {g.View.Track}"); // le panneau de course le dit déjà à l'écran
         }
         else if (Session is RaceHost h && h.View.Phase == RacePhase.Gathering)
         {

@@ -9,7 +9,7 @@ namespace LmdMulti.Race;
 /// Sélection d'une piste par son ID (ex. AL_01_A1), y compris verrouillée chez ce joueur (docs/game-api.md § 4).
 /// Verrou du jeu : masque d'heures du jour débloquées porté par l'info de piste, en mémoire seulement
 /// (recalculé depuis la progression sauvegardée au chargement du profil). On le force le temps de la
-/// course, puis on le remet dès qu'on a quitté la piste. Tant qu'elle est forcée, ni temps ni progression
+/// course, puis on le remet une fois revenu au menu. Tant qu'elle est forcée, ni temps ni progression
 /// n'y sont enregistrés (Diagnostics/TestMode.cs, AllowResult).
 internal static class TrackAccess
 {

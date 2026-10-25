@@ -139,6 +139,7 @@ public sealed class RaceGuest : IRaceSession
         View.Reason = CancelReason.HostLeft;
         var host = View.Find(HostId);
         if (host != null && host.IsActive) host.State = RacerState.Dnf;
+        Ranking.Sort(View.Entries);
     }
 
     public void Tick(double now)
@@ -162,6 +163,7 @@ public sealed class RaceGuest : IRaceSession
         _myState = s;
         var me = Me;
         if (me != null) { me.State = s; me.TimeMs = _myTime; me.Progress = _myProgress; }
+        if (HostGone) Ranking.Sort(View.Entries); // plus de classement de l'hôte : on se range soi-même
     }
 
     private void End(CancelReason reason)

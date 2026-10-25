@@ -83,7 +83,7 @@ public class LmdMultiMod : MelonMod
             if (_myTrack != null && !GameInfo.IsPaused()) NameLabels.Draw(_ghosts.Labels(), me);
             _panel.Draw();
             RaceHud.Draw(_race, NetClock.NowMs);
-            _toasts.Draw();
+            _toasts.Draw(RaceHud.BannerBottom);
         });
         _cost.Stop();
     }

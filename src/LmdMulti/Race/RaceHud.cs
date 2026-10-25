@@ -37,8 +37,12 @@ internal static class RaceHud
     private static GUIStyle Style(GUIStyle from, int size, FontStyle fs) =>
         new(from) { fontSize = Mathf.RoundToInt(size * S), fontStyle = fs };
 
+    /// Bas du bandeau central dessiné à cette image (0 sans bandeau) : les notifications passent dessous.
+    public static float BannerBottom { get; private set; }
+
     public static void Draw(RaceController c, double now)
     {
+        BannerBottom = 0;
         var s = c.Session;
         if (s == null) return;
         Ensure();
@@ -63,7 +67,7 @@ internal static class RaceHud
         if (p < 0.15f) return; // appui bref : pas de jauge qui clignote
         float w = Mathf.Min(Screen.width * 0.6f, 420 * S), barH = 16 * S, pad = 12 * S;
         float x = (Screen.width - w) / 2, y = Screen.height * 0.6f, titleH = _title.lineHeight * 1.2f;
-        GuiKit.Panel(new Rect(x - pad, y - pad, w + pad * 2, titleH + barH + _row.lineHeight + pad * 2.5f));
+        GuiKit.Panel(new Rect(x - pad, y - pad, w + pad * 2, titleH + barH + _row.lineHeight + pad * 2.5f), strong: true);
         string title = c.HoldCancels ? "Annulation de la course…" : "Abandon…";
         var old = _title.alignment;
         _title.alignment = TextAnchor.UpperCenter;
@@ -105,7 +109,7 @@ internal static class RaceHud
         if (v.Phase == RacePhase.Racing) lines.Add((Ranking.FormatTime(MyClock(s, now)), EndText(v, now), _chrono));
         else lines.Add((WaitText(s, now), "", _row));
         if (s is RaceGuest { HostGone: true })
-            lines.Add(($"<size={(int)(14 * S)}>{Colored("hôte parti : classement figé, ton chrono continue", DnfRed)}</size>", "", _row));
+            lines.Add(($"<size={(int)(14 * S)}>{Colored("hôte parti : classement figé", DnfRed)}</size>", "", _row));
         if (TrackAccess.IsForced(v.Track)) // rappel discret : verrou contourné, rien n'est enregistré (TestMode.AllowResult)
             lines.Add(($"<size={(int)(14 * S)}><color=#e0b060>piste non débloquée : temps non enregistré</color></size>", "", _row));
         int pos = 0;
@@ -153,11 +157,16 @@ internal static class RaceHud
             RacerState.Ready => v.Phase >= RacePhase.Countdown ? "" : Colored("prêt", Green),
             RacerState.Racing => Colored(SectionsText(e, s), Grey),
             RacerState.Finished => FinishText(v, e),
-            RacerState.Dnf => Colored("abandon", DnfRed),
+            RacerState.Dnf => Colored(Left(s, e) ? "parti" : "abandon", DnfRed),
             _ => "",
         };
         return ($"{place} {dot} {name}{(e.Id == v.HostId ? Colored("  hôte", Grey) : "")}", right, _row);
     }
+
+    /// Sorti parce qu'il a quitté le réseau (jeu fermé, coupure) plutôt que par abandon : l'hôte le sait
+    /// pour chacun (DroppedFrom, non transmis), un invité seulement pour l'hôte parti.
+    private static bool Left(IRaceSession s, RaceEntry e) =>
+        e.DroppedFrom != null || s is RaceGuest { HostGone: true } && e.Id == s.View.HostId;
 
     private static string SectionsText(RaceEntry e, IRaceSession s)
     {
@@ -223,16 +232,16 @@ internal static class RaceHud
         lines.Add(($"<size={(int)(13 * S)}><color=#aaaaaa>{RaceKeys.Go} fermer</color></size>", "", _row));
         float w = Mathf.Min(Screen.width * 0.9f, 460 * S);
         // Milieu d'écran : en haut, l'écran de résultats du jeu affiche titre et défis.
-        DrawTable(lines, (Screen.width - w) / 2, Screen.height * 0.36f, w);
+        DrawTable(lines, (Screen.width - w) / 2, Screen.height * 0.36f, w, strong: true);
     }
 
     // ---- Primitives ----
 
-    private static void DrawTable(List<(string left, string right, GUIStyle style)> lines, float x, float y, float w)
+    private static void DrawTable(List<(string left, string right, GUIStyle style)> lines, float x, float y, float w, bool strong = false)
     {
         float pad = 10 * S, gap = 3 * S;
         float h = lines.Sum(l => l.style.lineHeight + gap) + pad * 2;
-        GuiKit.Panel(new Rect(x, y, w, h));
+        GuiKit.Panel(new Rect(x, y, w, h), strong);
         float cy = y + pad;
         foreach (var (left, right, style) in lines)
         {
@@ -247,7 +256,8 @@ internal static class RaceHud
     {
         float pad = 14 * S, w = Mathf.Min(Screen.width * 0.94f, 720 * S);
         float h = lines.Sum(l => l.style.lineHeight * 1.15f) + pad * 2;
-        GuiKit.Panel(new Rect((Screen.width - w) / 2, y, w, h));
+        GuiKit.Panel(new Rect((Screen.width - w) / 2, y, w, h), strong: true);
+        BannerBottom = y + h;
         float cy = y + pad;
         foreach (var (text, style, color) in lines)
         {

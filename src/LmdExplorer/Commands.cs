@@ -59,6 +59,7 @@ internal static class Commands
 
         ["call"] = spec => Invoker.Call(spec),
         ["refs"] = type => RefProbe.Run(type),                                                              // refs [Type] : références périmées ?
+        ["res"] = SetResolution,                                                                            // res 1920 1080 : fenêtre (session seulement)
     };
 
     public static void Run(string line)
@@ -79,6 +80,15 @@ internal static class Commands
     {
         var bike = BikeProbe.Find();
         PuppetTest.Toggle(bike != null ? bike.gameObject : null);
+    }
+
+    /// Résolution de la fenêtre pour cette session (tests d'affichage) : les réglages du jeu ne sont pas
+    /// modifiés, mais Unity mémorise la taille en quittant (registre du préfixe : tools/lmd-virtual.sh la remet).
+    private static void SetResolution(string arg)
+    {
+        string[] wh = arg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Screen.SetResolution(int.Parse(wh[0]), int.Parse(wh[1]), FullScreenMode.Windowed);
+        Out.Info($"résolution demandée : {wh[0]}x{wh[1]} fenêtré");
     }
 
     private static PauseScreen FirstPause()

@@ -87,8 +87,8 @@ internal sealed class PlayersPanel
         if (_width < 0) // largeur ajustée au texte, recalculée seulement quand il change
             foreach (var line in _lines) _width = Mathf.Max(_width, GuiKit.Text.CalcSize(new GUIContent(line)).x);
         float w = Mathf.Min(_width + pad * 2, Screen.width * 0.6f);
-        // Menus : sous la barre d'onglets du jeu ; en piste, le coin est libre.
-        float top = _onTrack ? pad : Screen.height * 0.075f;
+        // Menus : sous la barre d'onglets du jeu ; en piste, sous le temps total affiché par le jeu dans ce coin.
+        float top = Screen.height * (_onTrack ? 0.1f : 0.075f);
         var box = new Rect(Screen.width - w - pad, top, w, _lines.Count * lineH + pad * 2);
         GuiKit.Panel(box);
         for (int i = 0; i < _lines.Count; i++)

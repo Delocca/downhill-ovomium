@@ -10,9 +10,10 @@ internal static class GuiKit
 
     public static GUIStyle Text, Small, Label, Centered;
 
-    /// Échelle des textes : proportionnelle à la hauteur d'écran (référence 1080p), avec un plancher
-    /// pour rester lisible dans une petite fenêtre (640×480 : textes de 12-13 px au lieu de 7-8).
-    public static float Scale => Mathf.Max(Screen.height / 1080f, 0.72f);
+    /// Échelle des textes : proportionnelle à la hauteur d'écran (×1,2 en 1080p : 20 px pour un texte courant,
+    /// lisible du canapé), avec un plancher pour une petite fenêtre (640×480 : 12-13 px au lieu de 7-8).
+    /// Vérifié sur écran virtuel en 640×480 et 1920×1080 (2026-10-25).
+    public static float Scale => Mathf.Max(Screen.height / 900f, 0.72f);
 
     public static void Ensure()
     {
@@ -44,7 +45,13 @@ internal static class GuiKit
         return s;
     }
 
-    public static void Panel(Rect r) => GUI.DrawTexture(r, _dark);
+    /// Fond sombre semi-transparent. strong : presque opaque, pour les encadrés centraux (invitation,
+    /// résultats, jauge) qui passent par-dessus le panneau des joueurs ou l'écran de résultats du jeu.
+    public static void Panel(Rect r, bool strong = false)
+    {
+        GUI.DrawTexture(r, _dark);
+        if (strong) GUI.DrawTexture(r, _dark); // deux couches : opacité ≈ 0,85
+    }
 
     private static Texture2D _white;
 
@@ -67,12 +74,16 @@ internal static class GuiKit
     public static string Hex(Color c) =>
         $"{(int)(Mathf.Clamp01(c.r) * 255):X2}{(int)(Mathf.Clamp01(c.g) * 255):X2}{(int)(Mathf.Clamp01(c.b) * 255):X2}";
 
-    /// Texte avec ombre portée : lisible sur la neige comme sur la roche.
+    private static readonly System.Text.RegularExpressions.Regex ColorTags = new("</?color[^>]*>", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// Texte avec ombre portée : lisible sur la neige comme sur la roche. L'ombre est dessinée sans les
+    /// balises de couleur (sinon elle prend leur couleur et le texte paraît dédoublé).
     public static void Shadowed(Rect r, string text, GUIStyle style, Color color)
     {
         var old = style.normal.textColor;
         style.normal.textColor = new Color(0, 0, 0, color.a * 0.8f);
-        GUI.Label(new Rect(r.x + 1.5f, r.y + 1.5f, r.width, r.height), text, style);
+        string shadow = text.IndexOf("<color", System.StringComparison.Ordinal) >= 0 ? ColorTags.Replace(text, "") : text;
+        GUI.Label(new Rect(r.x + 1.5f, r.y + 1.5f, r.width, r.height), shadow, style);
         style.normal.textColor = color;
         GUI.Label(r, text, style);
         style.normal.textColor = old;

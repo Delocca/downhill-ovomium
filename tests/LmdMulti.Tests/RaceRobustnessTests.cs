@@ -100,6 +100,7 @@ public class RaceRobustnessTests
         Assert.Equal(RacePhase.Finished, g2.View.Phase); // résultats partiels, chez soi
         Assert.Equal(CancelReason.HostLeft, g2.View.Reason);
         Assert.Equal(1, Ranking.PlaceOf(g2.View, 2));
+        Assert.Equal(2UL, g2.View.Entries[0].Id); // rangé en tête (l'hôte parti passe derrière)
         Assert.Equal(RacePhase.Racing, net.S(3).View.Phase); // l'autre roule encore
         net.S(3).Abandon(net.Now);
         net.Tick(100);
