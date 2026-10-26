@@ -82,9 +82,10 @@ internal static class TrackAccess
     }
 
     /// Une fois sur la piste forcée (déjà chargée) : rend au menu la sélection d'avant la course.
-    /// Revenir au menu avec une montagne verrouillée sélectionnée laisse le vélo du jeu dans son état de
-    /// piste (entrées, ragdoll) : le chargement suivant se fige alors (NullReferenceException dans
-    /// BikeLocomotion, caméra ; docs/game-api.md § 4). Rend aussi au profil sa piste active d'origine.
+    /// Revenir au menu avec certaines pistes sélectionnées (forcées, ou RO_01_A1 dans la sauvegarde d'Edia,
+    /// même sans mod) laisse le vélo du jeu dans son état de piste (entrées, ragdoll) : le chargement
+    /// suivant se fige alors (NullReferenceException dans BikeLocomotion, caméra ; docs/game-api.md § 4).
+    /// Rend aussi au profil sa piste active d'origine.
     public static void RestoreSelection()
     {
         if (_selectionBefore == null) return;

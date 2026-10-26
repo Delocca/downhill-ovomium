@@ -68,6 +68,9 @@ internal sealed class TrackLoader
         }
         else if (GameInfo.State() == GameInfo.StateOnTrack)
         {
+            // Piste visée sélectionnée avant de quitter : revenir au menu avec certaines pistes sélectionnées
+            // (forcées, RO_01_A1 chez Edia) fige le chargement suivant (docs/game-api.md § 4).
+            if (!TrackAccess.Select(Target, out string error)) { Fail(error); return; }
             Log.Info($"course : retour au menu pour charger {Target}");
             GameStateManager.Method_Public_Static_Void_1();
             Current = Step.Leaving;

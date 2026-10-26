@@ -87,7 +87,10 @@ internal static class TrackProbe
                 foreach (var info in sub.m_trackRouteInfos)
                 {
                     string id = info.m_fullTrackRouteID;
-                    sb.Append($"    sub {sub.m_SubID} scene={sub.m_sceneName} {id} idx={mt.Method_Public_Virtual_Final_New_Int32_String_Boolean_0(id, false)}" +
+                    sb.Append($"    sub {sub.m_SubID} playable={sub.IsPlayable} owned={sub.IsOwned} scene={sub.m_sceneName} {id}" +
+                              $" masque={(int)info.field_Private_ValueTypePublicSealedObUnique_0.field_Public_EnumPublicSealedva5v2_0}" +
+                              $" débloquée(tod {(int)MountainManager.prop_EnumPublicSealedva5v2_0})={info.Method_Public_Boolean_EnumPublicSealedva5v2_0(MountainManager.prop_EnumPublicSealedva5v2_0)}" +
+                              $" idx={mt.Method_Public_Virtual_Final_New_Int32_String_Boolean_0(id, false)}" +
                               $" cps={info.m_checkpointCount} nom={MountainManager.Method_Public_Static_String_String_0(id)}\n");
                 }
         }

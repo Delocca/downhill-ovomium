@@ -20,10 +20,12 @@ setup() {
         >"$LIB2/steamapps/appmanifest_711540.acf"
     echo exe >"$GAME/LMD_Win_x64.exe"
     printf 'WINE REGISTRY Version 2\n\n[Software\\\\Wine\\\\AppDefaults\\\\X.exe\\\\DllOverrides] 1\n"atiadlxx"="builtin"\n\n[Software\\\\Wine\\\\DllOverrides] 1785139151\n#time=1\n"atl100"="native,builtin"\n"d3d11"="native"\n\n[Software\\\\Wine\\\\Fonts] 1\n"x"="y"\n' >"$REG"
+    UFW="$W/ufw.conf" && echo 'ENABLED=no' >"$UFW" # le vrai /etc/ufw/ufw.conf de la machine n'est jamais lu
 }
 
 run() { # run [args] — sans terminal, réponses par OVOMIUM_ANSWER
-    OVOMIUM_STEAM_ROOTS="$STEAM" OVOMIUM_SKIP_RUNNING_CHECK=1 OVOMIUM_NO_TRASH=1 bash "$DIST/install-linux.sh" "$@" >"$W/out.txt" 2>&1
+    OVOMIUM_STEAM_ROOTS="$STEAM" OVOMIUM_SKIP_RUNNING_CHECK=1 OVOMIUM_NO_TRASH=1 OVOMIUM_UFW_CONF="$UFW" \
+        bash "$DIST/install-linux.sh" "$@" >"$W/out.txt" 2>&1
 }
 
 count_override() { grep -c '^"version"="native,builtin"' "$REG"; }
@@ -42,6 +44,10 @@ check 'grep -q 47701 "$GAME/UserData/Ovomium.cfg"' 'install : config gardée'
 check 'section_has_override && [[ $(count_override) == 1 ]]' 'install : override version dans [Software\\Wine\\DllOverrides]'
 check '[[ -f "$REG.ovomium-sauvegarde" ]]' 'install : sauvegarde de user.reg'
 check 'grep -q "^\"d3d11\"=\"native\"" "$REG" && grep -q "^\"x\"=\"y\"" "$REG"' 'install : reste du registre intact'
+check '! grep -q ufw "$W/out.txt"' 'install, ufw inactif : rien à signaler'
+echo 'ENABLED=yes' >"$UFW"
+run; check 'grep -q "sudo ufw allow 47701/udp" "$W/out.txt"' 'install, ufw actif : commande donnée avec le port de la config'
+echo 'ENABLED=no' >"$UFW"
 run; check '[[ $(count_override) == 1 ]] && grep -q "déjà à jour" "$W/out.txt"' 'réinstallation : idempotente'
 check 'grep -q "LMD-Camera copié.*identique" "$W/out.txt"' 'réinstallation : LMD-Camera identique, signalé'
 
@@ -55,7 +61,10 @@ check '[[ $(count_override) == 0 ]] && grep -q "^\"d3d11\"=\"native\"" "$REG"' '
 check '[[ -f "$GAME/UserData/Ovomium.cfg" ]]' 'désinstallation : réglages gardés'
 
 setup; mkdir -p "$GAME/Mods" && echo ancienne >"$GAME/Mods/$CAM"
+echo 'ENABLED=yes' >"$UFW"
 run
+check 'grep -q "sudo ufw allow 47700/udp" "$W/out.txt"' 'install sans config, ufw actif : port par défaut'
+echo 'ENABLED=no' >"$UFW"
 check 'cmp -s "$GAME/Mods/$CAM" "$DIST/fichiers/$CAM" && grep -q "remplace une autre version" "$W/out.txt"' 'LMD-Camera existant : remplacé, journalisé'
 echo joueur >"$GAME/Mods/$CAM"
 OVOMIUM_ANSWER=o run uninstall

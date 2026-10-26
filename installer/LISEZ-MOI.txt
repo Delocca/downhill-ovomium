@@ -121,6 +121,9 @@ LINUX / STEAM DECK
 ------------------
 Dans un terminal, depuis ce dossier :  bash install-linux.sh
 (désinstaller : bash install-linux.sh uninstall). Jeu fermé, sans sudo.
+Pare-feu ufw actif (Linux Mint, Ubuntu…) : les autres vous voient mais vous ne
+les voyez pas. Autorisez Ovomium une fois : sudo ufw allow 47700/udp
+(le script le signale).
 
 
 CONTENU ET LICENCES

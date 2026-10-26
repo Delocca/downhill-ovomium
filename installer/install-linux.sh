@@ -7,7 +7,7 @@
 # (compatdata/711540/pfx/user.reg, copie de sauvegarde à côté), pour que Wine charge MelonLoader.
 # Variables de test : OVOMIUM_STEAM_ROOTS (dossiers Steam séparés par « : »),
 # OVOMIUM_SKIP_RUNNING_CHECK=1, OVOMIUM_ANSWER=o|n (réponse aux questions sans terminal),
-# OVOMIUM_NO_TRASH=1 (supprimer au lieu de mettre à la corbeille).
+# OVOMIUM_NO_TRASH=1 (supprimer au lieu de mettre à la corbeille), OVOMIUM_UFW_CONF (fichier ufw.conf lu).
 set -euo pipefail
 
 APP_ID=711540
@@ -156,6 +156,16 @@ do_install() {
     say "" "Installé ! Lance le jeu depuis Steam." \
         "Premier lancement LONG (2 à 10 min, fenêtre noire de MelonLoader) : c'est normal, ne ferme rien." \
         "En jeu : F3 = joueurs, F1 = course (manette : Select + A). Voir LISEZ-MOI.txt."
+    warn_firewall
+}
+
+warn_firewall() { # pare-feu ufw actif : il bloque les autres joueurs (ils te voient, toi non). Ses règles exigent root.
+    local conf="${OVOMIUM_UFW_CONF:-/etc/ufw/ufw.conf}" port=47700 cfg="$GAME/UserData/Ovomium.cfg"
+    grep -qsE '^ENABLED=yes' "$conf" || return 0
+    [[ -f "$cfg" ]] && port="$(sed -n 's/^Port = \([0-9]\+\).*/\1/p' "$cfg" | head -1)" && [[ -n "$port" ]] || port=47700
+    say "" "ATTENTION : le pare-feu ufw est actif. Si ce n'est pas déjà fait, autorise Ovomium (une seule fois) :" \
+        "  sudo ufw allow $port/udp" \
+        "Sinon les autres joueurs te verront, mais toi tu ne les verras pas."
 }
 
 do_uninstall() {

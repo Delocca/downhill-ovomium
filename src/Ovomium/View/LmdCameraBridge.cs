@@ -46,6 +46,7 @@ internal sealed class LmdCameraBridge
                 throw new MissingMemberException("membres attendus introuvables");
             bridge.Version = melon.Info.Version;
             Log.Info($"vue : LMD-Camera {melon.Info.Version} trouvé, bascule 1re personne active");
+            Log.Try("vue : champ de vision 1re personne", bridge.TuneFirstPersonFov);
             return bridge;
         }
         catch (Exception e)
@@ -68,6 +69,27 @@ internal sealed class LmdCameraBridge
         if (rt.GetProperty("IsAlive")?.GetValue(rig) is false) return false;
         ragdoll = rt.GetProperty("IsRagdolling")?.GetValue(rig) is true;
         return !ragdoll;
+    }
+
+    /// Champ de vision 1re personne : 95 par défaut chez LMD-Camera (vertical, environ 130° à l'horizontale,
+    /// très déformé) ; on le passe à 70 seulement s'il vaut encore 95, pour garder un réglage fait à la main.
+    /// LMD-Camera lit FP_FOV une seule fois (objet Lens de CameraViewSettings, propriété sans setter) :
+    /// on remplace aussi cet objet, pour que la valeur s'applique dès cette session.
+    private void TuneFirstPersonFov()
+    {
+        const float original = 95f, tuned = 70f;
+        var entry = MelonPreferences.GetEntry<float>(MelonName, "FP_FOV");
+        if (entry == null || Math.Abs(entry.Value - original) > 0.01f) return;
+        object settings = _settings.GetValue(_handler);
+        object firstPerson = settings?.GetType().GetProperty("FirstPerson", Any)?.GetValue(settings);
+        var lensField = firstPerson?.GetType().GetField("<Lens>k__BackingField", Any);
+        object lens = lensField?.GetValue(firstPerson);
+        if (lens == null) throw new MissingMemberException("CameraViewSettings.Lens introuvable");
+        object nearClip = lens.GetType().GetProperty("NearClipPlane").GetValue(lens);
+        lensField.SetValue(firstPerson, Activator.CreateInstance(lens.GetType(), tuned, nearClip));
+        entry.Value = tuned;
+        MelonPreferences.GetCategory(MelonName).SaveToFile(false);
+        Log.Info($"vue : champ de vision 1re personne {original} → {tuned} (UserData/LMD-Camera.cfg)");
     }
 
     /// Applique la vue et l'enregistre comme préférence (comme les touches de LMD-Camera).
