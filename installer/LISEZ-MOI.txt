@@ -4,7 +4,7 @@ Ovomium @MOD_VERSION@ - des améliorations pour Lonely Mountains: Downhill
 Pour Lonely Mountains: Downhill 1.6 sur Steam (Windows ; Linux et Steam Deck aussi) :
 - jouer à plusieurs en réseau local : vous voyez les autres joueurs rouler sur votre
   piste, et vous pouvez lancer des courses ensemble ;
-- vue à la première personne ;
+- vue à la première et à la troisième personne ;
 - démarrage direct au menu, clavier AZERTY reconnu tout seul.
 
 
@@ -33,7 +33,8 @@ la même version d'Ovomium. Les autres apparaissent tout seuls.
   F1 maintenu 1,5 s   abandonner la course (ou l'annuler si vous l'avez lancée)
   F2                  changer l'aspect des autres joueurs (normal / transparent / teinté)
   F3                  afficher / cacher la liste des joueurs
-  V                   vue à la première personne / vue normale (manette : clic du stick droit)
+  V                   changer de vue : normale / 1re personne / 3e personne
+                      (manette : clic du stick droit)
   Manette : Select (Affichage) maintenu + A = comme F1 ; Select + B maintenus = abandonner
             (appuyez sur Select AVANT A ou B)
 
@@ -54,10 +55,11 @@ DÉMARRAGE RAPIDE ET CLAVIER
   dans Ovomium.cfg (noms des touches d'Unity : F1…F12, V, Keypad1…).
 
 
-VUE À LA PREMIÈRE PERSONNE (mod LMD-Camera)
--------------------------------------------
-En piste : touche V, ou clic du stick droit (R3) à la manette, pour passer de la
-vue normale à la vue à la première personne, et inversement. Ce choix est mémorisé.
+VUES À LA PREMIÈRE ET À LA TROISIÈME PERSONNE (mod LMD-Camera)
+--------------------------------------------------------------
+En piste : touche V, ou clic du stick droit (R3) à la manette, pour changer de vue,
+dans cet ordre : vue normale → première personne → troisième personne → vue
+normale… Ce choix est mémorisé. Pas de changement de vue pendant une chute.
 
 Touches du mod lui-même : 1 = première personne, 2 = vue normale,
 3 = troisième personne.
@@ -132,5 +134,5 @@ CONTENU ET LICENCES
 - MelonLoader @MELON_VERSION@ (fichiers\melonloader), chargeur de mods de LavaGang,
   licence Apache-2.0 : voir fichiers\MelonLoader-LICENSE.md et MelonLoader-NOTICE.txt.
   https://github.com/LavaGang/MelonLoader
-- LMD-Camera 1.1.0 (fichiers\LMD-Camera.dll), vue à la première personne, par flo-st,
+- LMD-Camera 1.1.0 (fichiers\LMD-Camera.dll), vues 1re et 3e personne, par flo-st,
   licence MIT : voir fichiers\LMD-Camera-LICENSE.txt. https://github.com/flo-st/LMD-Camera

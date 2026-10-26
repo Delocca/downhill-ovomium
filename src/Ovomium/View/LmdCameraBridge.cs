@@ -6,8 +6,8 @@ using MelonLoader;
 namespace Ovomium.View;
 
 /// Pont vers le mod LMD-Camera 1.1.0 (flo-st, licence MIT, livré tel quel à côté d'Ovomium : vue à la
-/// première personne). Ce mod n'a que des touches clavier (1, 2, 3) ; on lui ajoute une bascule (touche et
-/// bouton de manette) en appelant ses membres privés par réflexion : CameraMod._cameraInputHandler →
+/// première et à la troisième personne). Ce mod n'a que des touches clavier (1, 2, 3) ; on lui ajoute un cycle des
+/// trois vues (touche et bouton de manette, CameraToggle) en appelant ses membres privés par réflexion : CameraMod._cameraInputHandler →
 /// CameraInputHandler._view / _rig / _cameraSettings / ApplyView(ViewMode, RiderRig), CameraSettings.LastView
 /// (préférence enregistrée dans UserData/LMD-Camera.cfg). Une autre version de LMD-Camera peut casser le pont :
 /// il se désactive alors (journalisé) et les touches du mod restent utilisables.
@@ -35,7 +35,7 @@ internal sealed class LmdCameraBridge
     public static LmdCameraBridge Find()
     {
         var melon = MelonBase.RegisteredMelons.FirstOrDefault(m => m.Info.Name == MelonName);
-        if (melon == null) { Log.Info("vue : mod LMD-Camera absent (bascule 1re personne indisponible)"); return null; }
+        if (melon == null) { Log.Info("vue : mod LMD-Camera absent (changement de vue V / R3 indisponible)"); return null; }
         try
         {
             object handler = melon.GetType().GetField("_cameraInputHandler", Any)?.GetValue(melon);
@@ -45,7 +45,7 @@ internal sealed class LmdCameraBridge
             if (handler == null || bridge._view == null || bridge._rig == null || bridge._settings == null || bridge._apply == null)
                 throw new MissingMemberException("membres attendus introuvables");
             bridge.Version = melon.Info.Version;
-            Log.Info($"vue : LMD-Camera {melon.Info.Version} trouvé, bascule 1re personne active");
+            Log.Info($"vue : LMD-Camera {melon.Info.Version} trouvé, changement de vue V / R3 actif");
             Log.Try("vue : champ de vision 1re personne", bridge.TuneFirstPersonFov);
             return bridge;
         }

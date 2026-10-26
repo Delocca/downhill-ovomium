@@ -45,7 +45,7 @@ internal static class Config
         EchoKey = Key(c, "EchoKey", "F4", "écho", "Touche : activer/couper le mode écho");
         SkipIntro = c.CreateEntry("SkipIntro", true, description: "Démarrage rapide : passe les logos et l'écran « Appuyez sur… » pour arriver directement au menu");
         KeyboardLayout = c.CreateEntry("KeyboardLayout", "auto", description: "Clavier : auto (lettres du jeu, ex. ZQSD pour diriger, adaptées à ta disposition : AZERTY, QWERTZ…), azerty, qwertz, ou qwerty (touches du jeu inchangées)");
-        CameraKey = Key(c, "CameraKey", "V", "vue", "Touche : vue à la première personne ⇄ vue normale (mod LMD-Camera ; manette : clic du stick droit ; coupée pendant la VR de LMD-VR)");
+        CameraKey = Key(c, "CameraKey", "V", "vue", "Touche : change de vue, normale → 1re personne → 3e personne (mod LMD-Camera ; manette : clic du stick droit ; coupée pendant la VR de LMD-VR)");
         ShowPanel = c.CreateEntry("ShowPanel", true, description: "Panneau des joueurs visible au démarrage");
         EchoMode = c.CreateEntry("EchoMode", false, description: "Debug : affiche son propre fantôme, revenu par le réseau local avec un retard");
         EchoDelaySeconds = c.CreateEntry("EchoDelaySeconds", 2f, description: "Retard du fantôme écho (secondes)");
