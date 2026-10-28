@@ -88,8 +88,9 @@ public class ManifestTests
     [Fact]
     public void Releases_PlusRecentePubliee_Choisie()
     {
-        var list = ReleaseFeed.Parse(Releases);
+        var list = ReleaseFeed.Parse(Releases, out int seen);
         Assert.Equal(3, list.Count); // brouillon, préversion et tag non numéroté ignorés
+        Assert.Equal(6, seen);
         var current = new ModVersion(0, 4, 0);
         var target = ReleaseFeed.Newest(list, current);
         Assert.Equal(new ModVersion(0, 5, 1), target.Version);

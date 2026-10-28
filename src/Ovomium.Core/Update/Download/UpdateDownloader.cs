@@ -65,9 +65,9 @@ public sealed class UpdateDownloader
         // Dépôt privé la plupart du temps : 404 (ou pas de réseau) = rien à faire, on réessaiera au prochain lancement.
         try { json = Encoding.UTF8.GetString(_fetch.Bytes(_apiUrl, MaxApiBytes, ApiTimeout, FetchSource.Feed, "application/vnd.github+json")); }
         catch (Exception e) { Say(Kind.Log, $"mise à jour : releases inaccessibles ({e.Message})"); return; }
-        var releases = ReleaseFeed.Parse(json);
+        var releases = ReleaseFeed.Parse(json, out int seen);
         var target = ReleaseFeed.Newest(releases, _current);
-        if (target == null) { Say(Kind.Log, $"mise à jour : {_current} est la dernière version"); return; }
+        if (target == null) { Say(Kind.Log, $"mise à jour : {_current} est la dernière version ({seen} release(s) lue(s), {releases.Count} au format vX.Y.Z)"); return; }
         string v = target.Version.ToString();
         if (_pluginVersion == null)
         {

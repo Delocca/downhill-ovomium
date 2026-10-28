@@ -19,13 +19,18 @@ public sealed class ReleaseInfo
 public static class ReleaseFeed
 {
     /// Releases publiées dont le tag est une version « vX.Y.Z » ; brouillons et préversions ignorés.
-    public static List<ReleaseInfo> Parse(string json)
+    public static List<ReleaseInfo> Parse(string json) => Parse(json, out _);
+
+    /// Idem ; `seen` : nombre d'entrées de la liste, retenues ou non (journal : la requête a bien rapporté quelque chose).
+    public static List<ReleaseInfo> Parse(string json, out int seen)
     {
         using var doc = JsonDocument.Parse(json);
         var list = new List<ReleaseInfo>();
+        seen = 0;
         if (doc.RootElement.ValueKind != JsonValueKind.Array) return list;
         foreach (var r in doc.RootElement.EnumerateArray())
         {
+            seen++;
             if (r.ValueKind != JsonValueKind.Object || Flag(r, "draft") || Flag(r, "prerelease")) continue;
             if (!ModVersion.TryParseTag(Str(r, "tag_name"), out var v)) continue;
             list.Add(new ReleaseInfo { Version = v, Body = Str(r, "body") ?? "", Assets = AssetsOf(r) });
