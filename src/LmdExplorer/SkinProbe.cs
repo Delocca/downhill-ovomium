@@ -14,17 +14,22 @@ namespace LmdExplorer;
 ///   skin                      -> skin.txt : config locale + catalogue (vélos, variantes, tenues, couleurs)
 ///   skin build [a b c d] [clé=val…] -> construit à côté du vélo (clés : vhl var sk sc hc bc body hair beard helmet back)
 ///   skin off                  -> détruit le modèle construit
+///   skin face                 -> bascule : modèle à côté du vélo / devant, tourné vers la caméra
 internal static class SkinProbe
 {
     private static GameObject _built;
     private static readonly List<(Transform src, Transform dst)> _pairs = new();
     private static readonly Vector3 Offset = new(-2.5f, 0f, 0f); // la marionnette de test est à +2,5 m
+    private static readonly Vector3 FacingOffset = new(-1.3f, 0f, 0f); // à hauteur du vélo : net (profondeur de champ)
+    private static bool _facing;
 
     public static void Run(string arg)
     {
         string[] p = (arg ?? "").Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
         if (p.Length == 0) { Out.WriteFile("skin.txt", SkinCatalog.Report()); return; }
         if (p[0] == "off") { Destroy(); return; }
+        if (p[0] == "face") { _facing = !_facing; Out.Info($"modèle face caméra : {_facing}"); return; }
+        if (p[0] == "pose") { LogPose(); return; }
         if (p[0] == "build") Build(p);
         else Out.Info("usage : skin | skin build [a b c d] [clé=val…] | skin off");
     }
@@ -50,6 +55,7 @@ internal static class SkinProbe
         report.Append($"résultat : {_built.name} actif={_built.activeSelf} scène={_built.scene.name}\n");
         report.Append("composants avant nettoyage :\n").Append(Hierarchy.ComponentList(_built));
         report.Append($"nettoyage : {PuppetTest.Strip(_built)}\n");
+        report.Append($"BikeLocomotion après nettoyage : {Object.FindObjectsOfType<BikeLocomotion>().Length}\n");
         _built.name = "LmdSkinProbe";
         var bike = BikeProbe.Find();
         report.Append(SkinCompare.Compare(bike != null ? bike.gameObject : null, _built));
@@ -104,7 +110,9 @@ internal static class SkinProbe
         if (_built == null || _pairs.Count == 0) return;
         var (rootSrc, rootDst) = _pairs[0];
         if (rootSrc == null) { Destroy(); return; }
-        rootDst.SetPositionAndRotation(rootSrc.position + Offset, rootSrc.rotation);
+        if (_facing) // à côté du vélo, demi-tour : visage et torse vers la caméra
+            rootDst.SetPositionAndRotation(rootSrc.position + rootSrc.rotation * FacingOffset, rootSrc.rotation * Quaternion.Euler(0f, 180f, 0f));
+        else rootDst.SetPositionAndRotation(rootSrc.position + Offset, rootSrc.rotation);
         for (int i = 1; i < _pairs.Count; i++)
         {
             var (s, d) = _pairs[i];
@@ -112,6 +120,16 @@ internal static class SkinProbe
             d.localPosition = s.localPosition;
             d.localRotation = s.localRotation;
         }
+    }
+
+    /// Diagnostic : rotations monde de quelques transforms clés, source et modèle.
+    private static void LogPose()
+    {
+        if (_pairs.Count == 0) { Out.Info("pas de modèle"); return; }
+        foreach (var (s, d) in _pairs)
+            if (s != null && d != null && (s == _pairs[0].src || s.name is "bike" or "Bind_JNT" or "root_BindJNT" or "cog_BindJNT"))
+                Out.Info($"pose {s.name} : src pos={s.position} rot={s.eulerAngles} loc={s.localEulerAngles} | " +
+                         $"dst pos={d.position} rot={d.eulerAngles} loc={d.localEulerAngles} parent={d.parent?.name}");
     }
 
     private static void Destroy()

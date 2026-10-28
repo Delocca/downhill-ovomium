@@ -26,8 +26,9 @@ internal static class SkinCompare
             var names = new StringBuilder();
             foreach (var b in bones) names.Append(b != null ? b.name : "null").Append(' ');
             sb.Append($"SMR {Path(smr.transform, go.transform)} actif={smr.gameObject.activeInHierarchy} root={smr.rootBone?.name} " +
-                      $"os={bones.Length} mesh={mesh?.name} sommets={mesh?.vertexCount} sous-meshes={mesh?.subMeshCount} " +
+                      $"os={bones.Length} mesh={mesh?.name}#{mesh?.GetInstanceID()} sommets={mesh?.vertexCount} sous-meshes={mesh?.subMeshCount} " +
                       $"couleurs={ColorSum(mesh)} matériaux={Materials(smr)}\n  os : {names}\n");
+            foreach (var m in smr.sharedMaterials) Out.Try("propriétés", () => sb.Append("  ").Append(Props(m)).Append('\n'));
         }
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(true))
             sb.Append($"MR {Path(mr.transform, go.transform)} actif={mr.gameObject.activeInHierarchy} matériaux={Materials(mr)}\n");
@@ -44,10 +45,31 @@ internal static class SkinCompare
         return $"{cols.Length}:{r}/{g}/{b}/{a}";
     }
 
+    /// Valeurs des propriétés du shader (couleurs, flottants, vecteurs, textures) : où vivent peau et cheveux ?
+    private static string Props(Material m)
+    {
+        if (m == null) return "null";
+        var sb = new StringBuilder($"{m.name}#{m.GetInstanceID()} shader={m.shader.name} :");
+        var sh = m.shader;
+        for (int i = 0; i < sh.GetPropertyCount(); i++)
+        {
+            string n = sh.GetPropertyName(i);
+            string v = sh.GetPropertyType(i) switch
+            {
+                UnityEngine.Rendering.ShaderPropertyType.Color => m.GetColor(n).ToString(),
+                UnityEngine.Rendering.ShaderPropertyType.Vector => m.GetVector(n).ToString(),
+                UnityEngine.Rendering.ShaderPropertyType.Texture => m.GetTexture(n) is { } t ? $"{t.name}#{t.GetInstanceID()}" : "null",
+                _ => m.GetFloat(n).ToString("G4"),
+            };
+            sb.Append($" {n}={v}");
+        }
+        return sb.ToString();
+    }
+
     private static string Materials(Renderer r)
     {
         var sb = new StringBuilder();
-        foreach (var m in r.sharedMaterials) sb.Append(m != null ? m.name : "null").Append(',');
+        foreach (var m in r.sharedMaterials) sb.Append(m != null ? $"{m.name}#{m.GetInstanceID()}" : "null").Append(',');
         return sb.ToString();
     }
 
