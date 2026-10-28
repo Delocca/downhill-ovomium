@@ -34,7 +34,7 @@ internal static class PuppetTest
     }
 
     /// Retire tout ce qui simule : joints, scripts, colliders, rigidbodies ; désactive l'Animator.
-    private static string Strip(GameObject go)
+    public static string Strip(GameObject go)
     {
         var counts = new Dictionary<string, int>();
         void Kill(Component c)

@@ -51,7 +51,11 @@ public class ExplorerMod : MelonMod
         if (Input.GetKeyDown(KeyCode.F12)) Out.Try("F12", () => Commands.Run("puppet"));
     }
 
-    public override void OnLateUpdate() => PuppetTest.Follow();
+    public override void OnLateUpdate()
+    {
+        PuppetTest.Follow();
+        SkinProbe.Follow();
+    }
 
     private void WatchState()
     {

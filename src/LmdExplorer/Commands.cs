@@ -38,6 +38,7 @@ internal static class Commands
         ["dump"] = _ => Probes.FullDump(),
         ["status"] = _ => Out.Info(Probes.StatusLine()),
         ["puppet"] = _ => TogglePuppet(),
+        ["skin"] = SkinProbe.Run,                                                          // skin | skin build [a b c d] [clé=val…] | skin off
         ["screens"] = _ => ListScreens(),
         // Navigation / chargement de piste
         ["mainstart"] = _ => Object.FindObjectOfType<MainMenuScreen>().OnStartButton(),  // écran titre -> menu de jeu
