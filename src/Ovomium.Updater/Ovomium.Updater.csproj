@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Plugin OvomiumUpdater : installe, avant le chargement des mods, une mise à jour d'Ovomium déjà téléchargée et
+       vérifiée par le mod (UserData/Ovomium/update/). Aucun accès réseau. À copier dans <jeu>/Plugins/.
+       Figé : ne change que si UpdaterVersion change. Compile seulement ../Ovomium.Core/Update/*.cs (fichiers liés),
+       sans son sous-dossier Download (réseau, côté mod).
+       Sortie : bin/Release/net6.0/OvomiumUpdater.dll. Références : ../../refs (gitignoré). -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OvomiumUpdater</AssemblyName>
+    <RootNamespace>Ovomium.Updater</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RefsDir>$(MSBuildThisFileDirectory)../../refs/</RefsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Ovomium.Core/Update/*.cs" Link="Core/Update/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="$(RefsDir)MelonLoader.dll" Private="false" />
+  </ItemGroup>
+</Project>

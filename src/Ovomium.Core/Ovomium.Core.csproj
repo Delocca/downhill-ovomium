@@ -9,4 +9,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Ovomium.Core</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Les tests signent avec les primitives internes d'Ed25519 (le jeu ne fait que vérifier). -->
+    <InternalsVisibleTo Include="Ovomium.Tests" />
+  </ItemGroup>
 </Project>

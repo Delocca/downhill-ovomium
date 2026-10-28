@@ -28,6 +28,8 @@ internal static class Config
     public static MelonPreferences_Entry<bool> TestMode;
     public static MelonPreferences_Entry<bool> SkipIntro;
     public static MelonPreferences_Entry<string> KeyboardLayout;
+    public static MelonPreferences_Entry<bool> AutoUpdate;
+    public static MelonPreferences_Entry<string> UpdateApiUrl;
 
     public static void Init()
     {
@@ -46,6 +48,8 @@ internal static class Config
         SkipIntro = c.CreateEntry("SkipIntro", true, description: "Démarrage rapide : passe les logos et l'écran « Appuyez sur… » pour arriver directement au menu");
         KeyboardLayout = c.CreateEntry("KeyboardLayout", "auto", description: "Clavier : auto (lettres du jeu, ex. ZQSD pour diriger, adaptées à ta disposition : AZERTY, QWERTZ…), azerty, qwertz, ou qwerty (touches du jeu inchangées)");
         CameraKey = Key(c, "CameraKey", "V", "vue", "Touche : change de vue, normale → 1re personne → 3e personne (mod LMD-Camera ; manette : clic du stick droit ; coupée pendant la VR de LMD-VR)");
+        AutoUpdate = c.CreateEntry("AutoUpdate", true, description: "Mise à jour automatique : après l'écran titre, cherche une nouvelle version d'Ovomium (releases GitHub), la télécharge et la vérifie (signature) ; elle s'installe au lancement suivant du jeu");
+        UpdateApiUrl = c.CreateEntry("UpdateApiUrl", Update.AutoUpdate.DefaultApiUrl, description: "Tests seulement : liste des releases au format de l'API GitHub (https:// ou file://)");
         ShowPanel = c.CreateEntry("ShowPanel", true, description: "Panneau des joueurs visible au démarrage");
         EchoMode = c.CreateEntry("EchoMode", false, description: "Debug : affiche son propre fantôme, revenu par le réseau local avec un retard");
         EchoDelaySeconds = c.CreateEntry("EchoDelaySeconds", 2f, description: "Retard du fantôme écho (secondes)");
