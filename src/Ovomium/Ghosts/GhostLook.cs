@@ -8,7 +8,8 @@ namespace Ovomium.Ghosts;
 /// Aspect des fantômes (réglage GhostStyle) :
 ///  - None (défaut, « normal ») : identique au vélo local ; le pseudo coloré distingue les joueurs ;
 ///  - Translucent : semi-transparent, sans éclairage ni ombre, nuancé de la couleur du joueur
-///    (matériau propre au fantôme, détruit avec lui) ;
+///    sur toutes les parties du modèle, attaches comprises (matériaux propres au fantôme, un par
+///    texture d'origine, détruits avec lui) ;
 ///  - Tint : opaque, couleurs multipliées par celle du joueur (MaterialPropertyBlock : les matériaux
 ///    partagés avec le vélo local ne sont jamais modifiés). Effet discret : les couleurs viennent
 ///    surtout des sommets du modèle, que _Color ne fait que moduler.
@@ -17,6 +18,7 @@ internal static class GhostLook
     public enum Style { None, Tint, Translucent }
 
     private const string TranslucentShader = "Legacy Shaders/Particles/Alpha Blended";
+    private const string ModelShader = "Megagon/Standard VertexColor"; // vélo + rider (variantes Simple, NoCulling…)
     private static bool _logged;
 
     public static Style Parse(string s) => System.Enum.TryParse<Style>(s, true, out var v) ? v : Style.None;
@@ -40,15 +42,14 @@ internal static class GhostLook
         if (style == Style.None) return created;
         var renderers = go.GetComponentsInChildren<Renderer>(true);
         LogMaterials(renderers);
-        Material translucent = style == Style.Translucent ? MakeTranslucent(color) : null;
-        if (translucent != null) created.Add(translucent);
+        var translucent = new Dictionary<int, Material>(); // par texture d'origine (0 = aucune)
         foreach (var r in renderers)
         {
             var mats = r.sharedMaterials;
-            if (translucent != null && r.TryCast<SkinnedMeshRenderer>() != null)
+            if (style == Style.Translucent && IsModelPart(mats))
             {
                 var arr = new Material[mats.Length];
-                for (int i = 0; i < arr.Length; i++) arr[i] = translucent;
+                for (int i = 0; i < arr.Length; i++) arr[i] = TranslucentFor(mats[i], color, translucent, created) ?? mats[i];
                 r.sharedMaterials = arr;
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 continue;
@@ -56,6 +57,25 @@ internal static class GhostLook
             for (int i = 0; i < mats.Length; i++) Tint(r, i, mats[i], color);
         }
         return created;
+    }
+
+    /// Partie du vélo ou du rider (corps fusionné, cheveux, casque, dos…), et non phares ou particules.
+    private static bool IsModelPart(Material[] mats) =>
+        mats.Length > 0 && mats.All(m => m != null && m.shader != null && m.shader.name.StartsWith(ModelShader));
+
+    /// Matériau translucide qui reprend la texture du matériau d'origine (palette des attaches, lue par UV).
+    private static Material TranslucentFor(Material source, Color color, Dictionary<int, Material> cache, List<Material> created)
+    {
+        var tex = Declares(source, "_MainTex") ? source.GetTexture("_MainTex") : null;
+        int key = tex != null ? tex.GetInstanceID() : 0;
+        if (cache.TryGetValue(key, out var m)) return m;
+        m = MakeTranslucent(color);
+        if (m != null)
+        {
+            m.SetTexture("_MainTex", tex); // sans elle, cheveux et peau perdent leur teinte (blanchâtres)
+            created.Add(m);
+        }
+        return cache[key] = m;
     }
 
     private static void Tint(Renderer r, int index, Material m, Color color)
@@ -70,8 +90,9 @@ internal static class GhostLook
         r.SetPropertyBlock(block, index);
     }
 
-    /// Matériau translucide non éclairé. Le shader calcule 2 × couleur de sommet (= couleurs du modèle,
-    /// tenue comprise) × _TintColor : teinte à moitié pour garder les couleurs, nuancée par celle du joueur.
+    /// Matériau translucide non éclairé. Le shader calcule 2 × couleur de sommet × _MainTex (palette où
+    /// la fabrique place peau et cheveux par les UV) × _TintColor : teinte à moitié pour garder les
+    /// couleurs, nuancée par celle du joueur.
     private static Material MakeTranslucent(Color color)
     {
         var shader = Shader.Find(TranslucentShader);
@@ -97,7 +118,9 @@ internal static class GhostLook
         var log = new StringBuilder($"matériaux des fantômes ({renderers.Length} renderers) :");
         foreach (var r in renderers)
             foreach (var m in r.sharedMaterials)
-                if (m != null) log.Append($"\n  {r.name} {m.name} shader={m.shader?.name}");
+                if (m != null)
+                    log.Append($"\n  {r.GetIl2CppType().Name} {r.name} {m.name} shader={m.shader?.name} " +
+                               $"texture={(Declares(m, "_MainTex") ? m.GetTexture("_MainTex")?.name : "-")}");
         Log.Info(log.ToString());
         var shaders = Resources.FindObjectsOfTypeAll<Shader>().Select(s => s.name).Where(n => !n.StartsWith("Hidden/")).Distinct().OrderBy(n => n);
         Log.Info("shaders chargés : " + string.Join(", ", shaders));

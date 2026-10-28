@@ -62,7 +62,17 @@ internal static class Commands
         ["maps"] = _ => InputMaps.Dump(),                                                                   // cartes Rewired -> maps.txt
         ["refs"] = type => RefProbe.Run(type),                                                              // refs [Type] : références périmées ?
         ["res"] = SetResolution,                                                                            // res 1920 1080 : fenêtre (session seulement)
+        ["nodof"] = _ => NoDepthOfField(),                                                                  // coupe le flou de focale (session seulement, captures nettes)
     };
+
+    /// Flou de focale coupé en mémoire : réglages du post-traitement et pont du jeu qui les pilote.
+    private static void NoDepthOfField()
+    {
+        int n = 0;
+        foreach (var b in Resources.FindObjectsOfTypeAll<Il2CppMegagon.Framework.Graphics.DepthOfFieldBridge>()) { b.enabled = false; n++; }
+        foreach (var d in Resources.FindObjectsOfTypeAll<UnityEngine.Rendering.PostProcessing.DepthOfField>()) { d.enabled.value = false; n++; }
+        Out.Info($"flou de focale coupé ({n} objets)");
+    }
 
     public static void Run(string line)
     {
