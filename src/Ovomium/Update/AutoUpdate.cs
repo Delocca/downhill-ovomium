@@ -54,7 +54,7 @@ internal sealed class AutoUpdate
             string what = s.Result == UpdateOutcome.Rejected ? "refusée" : "échouée";
             // Version vide si le manifeste n'a pas pu être lu (signature invalide, etc.).
             string v = string.IsNullOrEmpty(s.Version) ? "" : " " + s.Version;
-            _notices.Post($"Mise à jour d'Ovomium{v} {what} : {GuiKit.Esc(s.Reason)}", Bad, 20000);
+            _notices.Post($"Mise à jour d'Ovomium{v} {what}", Bad, 20000, GuiKit.Esc(s.Reason));
             Log.Warn($"mise à jour{v} {what} par le plugin : {s.Reason}");
         }
     }
@@ -93,8 +93,9 @@ internal sealed class AutoUpdate
                 _notices.Post(m.Text, Info, 15000);
                 break;
             case UpdateDownloader.Kind.Ready:
-                _notices.Post($"Ovomium {m.Text} téléchargé : relance le jeu pour l'installer", Good, 15000);
-                if (!string.IsNullOrEmpty(m.Notes)) _notices.Post(GuiKit.Esc(m.Notes), new Color(0.9f, 0.92f, 0.95f), 25000, block: true);
+                // Notes dans la même carte : plus longues à lire, la carte reste d'autant plus longtemps.
+                _notices.Post($"Ovomium {m.Text} téléchargé : relance le jeu pour l'installer", Good,
+                    string.IsNullOrEmpty(m.Notes) ? 15000 : 25000, GuiKit.Esc(m.Notes));
                 break;
         }
     }

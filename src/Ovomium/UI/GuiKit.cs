@@ -9,6 +9,8 @@ internal static class GuiKit
     private static int _builtForHeight;
 
     public static GUIStyle Text, Small, Label, Centered;
+    /// Cartes d'avis (MenuNotices) : titre, intertitre et texte, avec retour à la ligne.
+    public static GUIStyle CardTitle, CardHeading, CardText;
 
     /// Échelle des textes : proportionnelle à la hauteur d'écran (×1,2 en 1080p : 20 px pour un texte courant,
     /// lisible du canapé), avec un plancher pour une petite fenêtre (640×480 : 12-13 px au lieu de 7-8).
@@ -31,13 +33,16 @@ internal static class GuiKit
         Label.alignment = TextAnchor.MiddleCenter;
         Centered = Make(19, FontStyle.Bold);
         Centered.alignment = TextAnchor.MiddleCenter;
+        CardTitle = Make(24, FontStyle.Bold, wrap: true);
+        CardHeading = Make(18, FontStyle.Bold, wrap: true);
+        CardText = Make(20, FontStyle.Normal, wrap: true);
     }
 
-    private static GUIStyle Make(int size, FontStyle style)
+    private static GUIStyle Make(int size, FontStyle style, bool wrap = false)
     {
         var s = new GUIStyle(GUI.skin.label)
         {
-            fontSize = Mathf.RoundToInt(size * Scale), fontStyle = style, richText = true, wordWrap = false, clipping = TextClipping.Overflow,
+            fontSize = Mathf.RoundToInt(size * Scale), fontStyle = style, richText = true, wordWrap = wrap, clipping = TextClipping.Overflow,
         };
         s.padding = new RectOffset(0, 0, 0, 0);
         s.margin = new RectOffset(0, 0, 0, 0);

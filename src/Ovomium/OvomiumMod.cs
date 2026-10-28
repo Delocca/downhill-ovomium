@@ -68,7 +68,6 @@ public class OvomiumMod : MelonMod
         double now = NetClock.NowMs;
         Log.Try("état local", () => RefreshLocal(now));
         Log.Try("mise à jour", _update.Update);
-        Log.Try("avis", () => _menuNotices.Flush(_toasts));
         Log.Try("événements réseau", DrainEvents);
         Log.Try("touches", HandleKeys);
         Log.Try("touches de course", () => _race.HandleKeys(now, _myName));
@@ -99,6 +98,7 @@ public class OvomiumMod : MelonMod
             // Menu pause du jeu : les pseudos passeraient par-dessus ses boutons.
             if (_myTrack != null && !GameInfo.IsPaused()) NameLabels.Draw(_ghosts.Labels(), me);
             _panel.Draw();
+            _menuNotices.Draw(_myTrack != null);
             RaceHud.Draw(_race, NetClock.NowMs);
             _toasts.Draw(RaceHud.BannerBottom);
         });
