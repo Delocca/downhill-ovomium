@@ -1,5 +1,5 @@
 # Désinstalleur Ovomium (lancé par « Desinstaller Ovomium.bat »).
-# Retire le mod, LMD-Camera (si c'est la copie livrée) et la règle de pare-feu ;
+# Retire le mod, LMD-Camera (si c'est la copie livrée), le plugin de mise à jour (et son état) et la règle de pare-feu ;
 # propose de retirer MelonLoader s'il n'y a pas d'autre mod.
 # Réglages (UserData) gardés. Mêmes paramètres de test que Install.ps1.
 param(
@@ -14,6 +14,7 @@ param(
 . (Join-Path $PSScriptRoot 'Melon.ps1')
 . (Join-Path $PSScriptRoot 'Firewall.ps1')
 . (Join-Path $PSScriptRoot 'Camera.ps1')
+. (Join-Path $PSScriptRoot 'Updater.ps1')
 
 $script:Payload = Split-Path -Parent $PSScriptRoot
 $script:Notes = @()
@@ -56,6 +57,7 @@ function Invoke-Uninstall {
     # Avant le test « autres mods » : notre copie de LMD-Camera ne doit pas retenir MelonLoader.
     $camera = Uninstall-CameraMod $game.Dir $script:Payload
     Write-Journal "LMD-Camera : $camera"
+    Uninstall-Updater $game.Dir
     Uninstall-Firewall
     $melon = Uninstall-MelonIfUnused $game.Dir
     Write-Journal "MelonLoader : $melon"

@@ -4,6 +4,7 @@
 set -uo pipefail
 DIST="$1" W="$2"
 CAM=LMD-Camera.dll
+UPD=OvomiumUpdater.dll
 FAIL=0
 check() { if eval "$1"; then echo "OK   $2"; else echo "ÉCHEC $2"; FAIL=1; fi; }
 
@@ -39,6 +40,7 @@ run; code=$?
 check '[[ $code == 0 ]]' "install : code 0 ($code)"
 check 'cmp -s "$GAME/Mods/Ovomium.dll" "$DIST/fichiers/Ovomium.dll"' 'install : DLL copiée (2e bibliothèque)'
 check 'cmp -s "$GAME/Mods/$CAM" "$DIST/fichiers/$CAM"' 'install : LMD-Camera copié'
+check 'cmp -s "$GAME/Plugins/$UPD" "$DIST/fichiers/$UPD"' 'install : plugin de mise à jour copié dans Plugins'
 check 'cmp -s "$GAME/version.dll" "$DIST/fichiers/melonloader/version.dll"' 'install : MelonLoader copié'
 check 'grep -q 47701 "$GAME/UserData/Ovomium.cfg"' 'install : config gardée'
 check 'section_has_override && [[ $(count_override) == 1 ]]' 'install : override version dans [Software\\Wine\\DllOverrides]'
@@ -48,15 +50,22 @@ check '! grep -q ufw "$W/out.txt"' 'install, ufw inactif : rien à signaler'
 echo 'ENABLED=yes' >"$UFW"
 run; check 'grep -q "sudo ufw allow 47701/udp" "$W/out.txt"' 'install, ufw actif : commande donnée avec le port de la config'
 echo 'ENABLED=no' >"$UFW"
+STATE="$GAME/UserData/Ovomium"
+mkdir -p "$STATE/update" "$STATE/update.tmp" && echo ancienne >"$STATE/update/Ovomium.dll" && echo '{}' >"$STATE/installed.json"
 run; check '[[ $(count_override) == 1 ]] && grep -q "déjà à jour" "$W/out.txt"' 'réinstallation : idempotente'
 check 'grep -q "LMD-Camera copié.*identique" "$W/out.txt"' 'réinstallation : LMD-Camera identique, signalé'
+check '[[ ! -e "$STATE/update" && ! -e "$STATE/update.tmp" && -f "$STATE/installed.json" ]] && grep -q "en attente effacée" "$W/out.txt"' \
+    'réinstallation : mise à jour en attente effacée, état gardé'
 
+echo '{}' >"$STATE/update-state.json" && mkdir -p "$STATE/update" "$STATE/update.tmp"
 OVOMIUM_ANSWER=n run uninstall
 check '[[ ! -e "$GAME/Mods/Ovomium.dll" && -e "$GAME/version.dll" && $(count_override) == 1 ]]' 'désinstallation + n : MelonLoader et override gardés'
 check '[[ ! -e "$GAME/Mods/$CAM" ]]' 'désinstallation : LMD-Camera livré retiré'
+check '[[ ! -e "$GAME/Plugins/$UPD" && ! -e "$STATE" && -f "$GAME/UserData/Ovomium.cfg" ]]' \
+    'désinstallation : plugin et état de mise à jour retirés, réglages gardés'
 run; OVOMIUM_ANSWER=o run uninstall
-check 'grep -q "retirer aussi MelonLoader" "$W/out.txt"' 'désinstallation : LMD-Camera livré ne compte pas comme autre mod'
-check '[[ ! -e "$GAME/version.dll" && ! -d "$GAME/MelonLoader" && ! -d "$GAME/Mods" ]]' 'désinstallation + o : MelonLoader retiré'
+check 'grep -q "retirer aussi MelonLoader" "$W/out.txt"' 'désinstallation : LMD-Camera et plugin livrés ne comptent pas comme autres mods'
+check '[[ ! -e "$GAME/version.dll" && ! -d "$GAME/MelonLoader" && ! -d "$GAME/Mods" && ! -d "$GAME/Plugins" ]]' 'désinstallation + o : MelonLoader retiré'
 check '[[ $(count_override) == 0 ]] && grep -q "^\"d3d11\"=\"native\"" "$REG"' 'désinstallation : override retiré, reste intact'
 check '[[ -f "$GAME/UserData/Ovomium.cfg" ]]' 'désinstallation : réglages gardés'
 

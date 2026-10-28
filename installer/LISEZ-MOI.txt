@@ -23,6 +23,9 @@ PREMIER LANCEMENT : LONG (2 à 10 minutes)
 Une fenêtre noire (MelonLoader) prépare le jeu. C'est normal : ne fermez rien,
 le jeu s'ouvre ensuite. Les lancements suivants sont rapides.
 
+MISES À JOUR : automatiques, rien à réinstaller. Quand un message en jeu vous
+le demande, quittez le jeu et relancez-le.
+
 
 JOUER
 -----
@@ -114,9 +117,9 @@ https://github.com/visual-gh/LMD-VR (installation : voir sa page).
 
 DÉSINSTALLER
 ------------
-Double-cliquez sur « Desinstaller Ovomium ». Le mod est retiré, LMD-Camera aussi
-(sauf si vous l'aviez installé vous-même), et MelonLoader si aucun autre mod ne
-s'en sert (il vous le demande). Vos réglages restent dans <dossier du jeu>\UserData.
+Double-cliquez sur « Desinstaller Ovomium ». Le mod et ses mises à jour sont
+retirés, LMD-Camera aussi (sauf si vous l'aviez installé vous-même), et
+MelonLoader si aucun autre mod ne s'en sert (il vous le demande). Vos réglages restent dans <dossier du jeu>\UserData.
 
 
 LINUX / STEAM DECK
@@ -130,7 +133,8 @@ les voyez pas. Autorisez Ovomium une fois : sudo ufw allow 47700/udp
 
 CONTENU ET LICENCES
 -------------------
-- Ovomium @MOD_VERSION@ (fichiers\Ovomium.dll), par Edia.
+- Ovomium @MOD_VERSION@ (fichiers\Ovomium.dll, et fichiers\OvomiumUpdater.dll pour les
+  mises à jour automatiques), par Edia.
 - MelonLoader @MELON_VERSION@ (fichiers\melonloader), chargeur de mods de LavaGang,
   licence Apache-2.0 : voir fichiers\MelonLoader-LICENSE.md et MelonLoader-NOTICE.txt.
   https://github.com/LavaGang/MelonLoader

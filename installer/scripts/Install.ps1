@@ -1,5 +1,6 @@
 # Installeur Ovomium (lancé par « Installer Ovomium.bat »).
-# Trouve le jeu, installe MelonLoader si besoin, copie le mod (et LMD-Camera), ouvre le pare-feu (UAC), journalise.
+# Trouve le jeu, installe MelonLoader si besoin, copie le mod (et LMD-Camera, et le plugin de mise à jour),
+# ouvre le pare-feu (UAC), journalise.
 # Paramètres de test : -SteamRoot / -GameDir (pas de registre), -Answers "Clé=Oui,Clé2=Non" (sans fenêtres).
 # Code de sortie : 0 réussi ; 21-24 annulé (expliqué à l'écran) ; 9 erreur ; 1 = PowerShell n'a pas pu lancer le script.
 param(
@@ -14,6 +15,7 @@ param(
 . (Join-Path $PSScriptRoot 'Melon.ps1')
 . (Join-Path $PSScriptRoot 'Firewall.ps1')
 . (Join-Path $PSScriptRoot 'Camera.ps1')
+. (Join-Path $PSScriptRoot 'Updater.ps1')
 
 $script:ModVersion = '@MOD_VERSION@'      # remplacés par tools/make-dist.sh
 $script:TestedBuildId = '@TESTED_BUILD@'
@@ -83,12 +85,13 @@ function Show-Success([string]$Dir, [string]$MelonStatus) {
         "Lancez le jeu depuis Steam, comme d'habitude.`n"
     if ($script:Notes.Count -gt 0) { $text += "`n" + ($script:Notes -join "`n`n") + "`n" }
     $text += "`nEn jeu : F3 = joueurs connectés, F1 = lancer / rejoindre une course " +
-        "(manette : Select + A). Voir LISEZ-MOI.txt.`n`nJournal : $($script:LogPath)"
+        "(manette : Select + A). Voir LISEZ-MOI.txt.`n`n" +
+        "Mises à jour automatiques : relancez le jeu quand un message vous le demande.`n`nJournal : $($script:LogPath)"
     Show-Message $text 'Info'
 }
 
 function Invoke-Install {
-    $files = @('Ovomium.dll', $script:CameraName) | ForEach-Object { Join-Path $script:Payload $_ }
+    $files = @('Ovomium.dll', $script:CameraName, $script:UpdaterName) | ForEach-Object { Join-Path $script:Payload $_ }
     if (@($files | Where-Object { -not (Test-Path -LiteralPath $_) }).Count -gt 0) {
         Show-Message "Fichiers de l'installeur incomplets : extrayez tout le zip puis relancez." 'Error'
         return 21
@@ -103,7 +106,9 @@ function Invoke-Install {
     if ($melon -eq 'abandon') { Show-Message 'Installation annulée : rien n''a été modifié.' 'Warning'; return 24 }
     Install-ModDll $game.Dir
     Install-CameraMod $game.Dir $script:Payload
+    Install-Updater $game.Dir $script:Payload
     Clear-DownloadMark (Join-Path $game.Dir 'Mods')
+    Clear-DownloadMark (Join-Path $game.Dir 'Plugins')
     Clear-DownloadMark (Join-Path $game.Dir 'MelonLoader')
     Clear-DownloadMark (Join-Path $game.Dir 'version.dll')
     Install-Firewall (Join-Path $game.Dir $script:GameExeName)

@@ -101,14 +101,15 @@ function Install-MelonLoader([string]$GameDir, [string]$Payload) {
     return 'installé'
 }
 
-# Mods et plugins autres qu'Ovomium (noms de fichiers).
+# Mods et plugins autres qu'Ovomium et son plugin de mise à jour (noms de fichiers).
 function Get-OtherMods([string]$GameDir) {
+    $ours = @('Ovomium.dll', 'OvomiumUpdater.dll')
     $found = @()
     foreach ($sub in @('Mods', 'Plugins')) {
         $dir = Join-Path $GameDir $sub
         if (-not (Test-Path -LiteralPath $dir)) { continue }
         $found += @(Get-ChildItem -LiteralPath $dir -Recurse -File -Filter '*.dll' |
-            Where-Object { $_.Name -ne 'Ovomium.dll' } | ForEach-Object { $_.Name })
+            Where-Object { $ours -notcontains $_.Name } | ForEach-Object { $_.Name })
     }
     return ,$found
 }

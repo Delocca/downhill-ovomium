@@ -2,7 +2,8 @@
 # Ovomium pour Linux / Steam Deck (jeu Windows lancé par Proton). Sans sudo.
 #   bash install-linux.sh             installe (ou met à jour)
 #   bash install-linux.sh uninstall   désinstalle
-# Ce que fait l'installation : copie MelonLoader, Ovomium.dll et LMD-Camera.dll dans le dossier du jeu, puis
+# Ce que fait l'installation : copie MelonLoader, Ovomium.dll et LMD-Camera.dll (Mods/), le plugin de mise à jour
+# automatique OvomiumUpdater.dll (Plugins/) dans le dossier du jeu, puis
 # règle la DLL « version » en « native,builtin » dans le registre du préfixe Proton du jeu
 # (compatdata/711540/pfx/user.reg, copie de sauvegarde à côté), pour que Wine charge MelonLoader.
 # Variables de test : OVOMIUM_STEAM_ROOTS (dossiers Steam séparés par « : »),
@@ -13,6 +14,9 @@ set -euo pipefail
 APP_ID=711540
 EXE=LMD_Win_x64.exe
 CAMERA=LMD-Camera.dll
+UPDATER=OvomiumUpdater.dll
+# Fichiers d'état du plugin de mise à jour, dans UserData/Ovomium/ (les réglages Ovomium.cfg sont à part).
+UPDATER_STATE=(update update.tmp update-state.json installed.json)
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAYLOAD="$HERE/fichiers"
 
@@ -101,8 +105,8 @@ set_override() {
     say "  user.reg : override version → $mode ($reg)"
 }
 
-other_mods() {
-    find "$GAME/Mods" "$GAME/Plugins" -name '*.dll' ! -name 'Ovomium.dll' 2>/dev/null || true
+other_mods() { # notre plugin de mise à jour ne compte pas : il ne doit pas retenir MelonLoader
+    find "$GAME/Mods" "$GAME/Plugins" -name '*.dll' ! -name 'Ovomium.dll' ! -name "$UPDATER" 2>/dev/null || true
 }
 
 install_melon() {
@@ -144,18 +148,41 @@ uninstall_camera() { # retire LMD-Camera seulement si identique à la copie livr
     fi
 }
 
+install_updater() { # plugin de mise à jour automatique ; une mise à jour en attente serait plus ancienne : effacée
+    mkdir -p "$GAME/Plugins"
+    cp "$PAYLOAD/$UPDATER" "$GAME/Plugins/$UPDATER"
+    say "Plugin de mise à jour copié : $GAME/Plugins/$UPDATER"
+    local pending
+    for pending in update update.tmp; do
+        if [[ -e "$GAME/UserData/Ovomium/$pending" ]]; then
+            say "Mise à jour automatique en attente effacée (remplacée par cette installation) :"
+            remove_path "$GAME/UserData/Ovomium/$pending"
+        fi
+    done
+}
+
+uninstall_updater() { # plugin et ses fichiers d'état ; UserData/Ovomium.cfg (réglages) reste
+    remove_path "$GAME/Plugins/$UPDATER"
+    local f
+    for f in "${UPDATER_STATE[@]}"; do remove_path "$GAME/UserData/Ovomium/$f"; done
+    rmdir "$GAME/UserData/Ovomium" 2>/dev/null || true
+}
+
 do_install() {
-    [[ -f "$PAYLOAD/Ovomium.dll" && -f "$PAYLOAD/$CAMERA" ]] || die "fichiers manquants : extrais tout le zip."
+    local f
+    for f in Ovomium.dll "$CAMERA" "$UPDATER"; do [[ -f "$PAYLOAD/$f" ]] || die "fichiers manquants : extrais tout le zip."; done
     install_melon
     mkdir -p "$GAME/Mods"
     cp "$PAYLOAD/Ovomium.dll" "$GAME/Mods/Ovomium.dll"
     say "Mod copié : $GAME/Mods/Ovomium.dll"
     install_camera
+    install_updater
     [[ -f "$GAME/UserData/Ovomium.cfg" ]] && say "Réglages existants gardés : $GAME/UserData/Ovomium.cfg"
     set_override set
     say "" "Installé ! Lance le jeu depuis Steam." \
         "Premier lancement LONG (2 à 10 min, fenêtre noire de MelonLoader) : c'est normal, ne ferme rien." \
-        "En jeu : F3 = joueurs, F1 = course (manette : Select + A). Voir LISEZ-MOI.txt."
+        "En jeu : F3 = joueurs, F1 = course (manette : Select + A). Voir LISEZ-MOI.txt." \
+        "Mises à jour automatiques : relance le jeu quand un message te le demande."
     warn_firewall
 }
 
@@ -171,6 +198,7 @@ warn_firewall() { # pare-feu ufw actif : il bloque les autres joueurs (ils te vo
 do_uninstall() {
     remove_path "$GAME/Mods/Ovomium.dll"
     uninstall_camera # avant le test « autres mods » : notre copie ne doit pas retenir MelonLoader
+    uninstall_updater
     if [[ -n "$(other_mods)" ]]; then
         say "MelonLoader gardé : d'autres mods s'en servent."
     elif [[ -e "$GAME/version.dll" || -d "$GAME/MelonLoader" ]] &&

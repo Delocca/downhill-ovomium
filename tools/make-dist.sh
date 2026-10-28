@@ -1,7 +1,9 @@
 #!/bin/bash
-# Paquet de distribution : dist/downhill-ovomium-<version>.zip (installeur Windows, Linux, mod, MelonLoader, LMD-Camera).
-#   tools/make-dist.sh            compile le mod (Release) puis emballe
-#   tools/make-dist.sh --no-build emballe la DLL déjà compilée
+# Paquet de distribution : dist/downhill-ovomium-<version>.zip (installeur Windows, Linux, mod, plugin de mise à jour,
+# MelonLoader, LMD-Camera), et à côté, pour la mise à jour automatique : ovomium-update.json (manifeste, non signé :
+# la signature est faite par tools/release.sh), Ovomium.dll et LMD-Camera.dll nus.
+#   tools/make-dist.sh            compile le mod et le plugin (Release) puis emballe
+#   tools/make-dist.sh --no-build emballe les DLL déjà compilées
 # Besoins : refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip et vendor/LMD-Camera-1.1.0/LMD-Camera.dll
 # (téléchargés si absents, empreintes vérifiées).
 # Voir docs/distribution.md.
@@ -26,6 +28,9 @@ MOD_VERSION=$(sed -n 's/.*const string Version = "\([^"]*\)".*/\1/p' "$ROOT/src/
 [[ -n "$MOD_VERSION" ]] || { echo "version du mod introuvable" >&2; exit 1; }
 NAME="downhill-ovomium-$MOD_VERSION"
 DLL="$ROOT/src/Ovomium/bin/Release/net6.0/Ovomium.dll"
+UPDATER_DIR="$ROOT/src/Ovomium.Updater"
+UPDATER_DLL="$UPDATER_DIR/bin/Release/net6.0/OvomiumUpdater.dll"
+MANIFEST="$ROOT/dist/ovomium-update.json"
 
 fetch_pinned() { # fichier url sha256 : télécharge si absent, puis vérifie l'empreinte épinglée
     if [[ ! -f "$1" ]]; then
@@ -40,6 +45,35 @@ fetch_pinned() { # fichier url sha256 : télécharge si absent, puis vérifie l'
 build_mod() {
     [[ "${1:-}" == --no-build ]] && return
     dotnet build "$ROOT/src/Ovomium" -c Release -nologo -v quiet
+    dotnet build "$UPDATER_DIR" -c Release -nologo -v quiet
+}
+
+# minUpdater du manifeste = constante UpdaterVersion du plugin (le plugin refuse un manifeste qui en exige plus).
+updater_version() {
+    local v
+    v=$(cat "$UPDATER_DIR"/*.cs 2>/dev/null | sed -n 's/.*UpdaterVersion *= *\([0-9][0-9]*\) *;.*/\1/p' | sort -u || true)
+    [[ "$v" =~ ^[0-9]+$ ]] || { echo "constante UpdaterVersion introuvable (ou ambiguë) dans $UPDATER_DIR/*.cs" >&2; exit 1; }
+    echo "$v"
+}
+
+# dist/ovomium-update.json (UTF-8 compact, ordre des clés fixe : octets identiques d'un emballage à l'autre)
+# et les DLL nues que le plugin télécharge.
+write_update_files() {
+    local min_updater
+    min_updater=$(updater_version)
+    mkdir -p "$ROOT/dist"
+    cp "$DLL" "$ROOT/dist/Ovomium.dll"
+    cp "$CAMERA_DLL" "$ROOT/dist/LMD-Camera.dll"
+    python3 -I - "$MANIFEST" "$MOD_VERSION" "$min_updater" "$ROOT/dist" Ovomium.dll LMD-Camera.dll <<'EOF'
+import hashlib, json, sys
+out, version, min_updater, folder, *names = sys.argv[1:]
+files = [{"name": n, "dest": "Mods",
+          "sha256": hashlib.sha256(open(f"{folder}/{n}", "rb").read()).hexdigest()} for n in names]
+data = {"version": version, "minUpdater": int(min_updater), "files": files}
+with open(out, "wb") as f:
+    f.write(json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+EOF
+    echo "manifeste : $MANIFEST (minUpdater $min_updater)"
 }
 
 # Texte pour Windows : fins de ligne CRLF, BOM UTF-8 si demandé (PowerShell 5.1 lit sinon en ANSI).
@@ -60,6 +94,7 @@ stage() { # dossier de travail → arborescence du zip
     for ps in "$src"/scripts/*.ps1; do to_windows "$ps" "$out/fichiers/scripts/$(basename "$ps")" bom; done
     install -m 755 "$src/install-linux.sh" "$out/install-linux.sh"
     cp "$DLL" "$out/fichiers/Ovomium.dll"
+    cp "$UPDATER_DLL" "$out/fichiers/OvomiumUpdater.dll"
     unzip -q "$MELON_ZIP" -d "$out/fichiers/melonloader"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/LICENSE.md" "$out/fichiers/MelonLoader-LICENSE.md"
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/NOTICE.txt" "$out/fichiers/MelonLoader-NOTICE.txt"
@@ -82,11 +117,13 @@ main() {
     fetch_pinned "$MELON_ZIP" "$MELON_URL" "$MELON_SHA256"
     fetch_pinned "$CAMERA_DLL" "$CAMERA_URL" "$CAMERA_SHA256"
     build_mod "${1:-}"
-    [[ -f "$DLL" ]] || { echo "DLL absente : $DLL" >&2; exit 1; }
+    local f
+    for f in "$DLL" "$UPDATER_DLL"; do [[ -f "$f" ]] || { echo "DLL absente : $f" >&2; exit 1; }; done
     WORK=$(mktemp -d /tmp/lmd-dist.XXXXXX)
     trap 'rm -rf "$WORK"' EXIT
     stage "$WORK"
-    pack "$WORK"
+    write_update_files
+    pack "$WORK" # en dernier : ses deux lignes (chemin du zip, SHA-256) sont lues par les tests
 }
 
 main "$@"
