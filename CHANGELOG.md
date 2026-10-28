@@ -2,6 +2,8 @@
 
 ## Non publié
 
+## 0.5.0 — 2026-10-29
+
 - **Mise à jour automatique** : les prochaines versions se téléchargent toutes seules à l'écran titre et s'installent au lancement suivant ; chaque version est signée et toute version modifiée est refusée. Cette 0.5.0 s'installe encore avec l'installeur.
 - **Apparence propre à chaque joueur** : chaque fantôme porte la tenue et le vélo de son joueur ; sans le DLC correspondant, on voit son propre vélo à la place. Les fantômes translucides le sont maintenant entièrement (casque, cheveux, sac compris).
 - ⚠ Protocole réseau v3 : tout le monde doit passer en 0.5.0 pour se voir.
