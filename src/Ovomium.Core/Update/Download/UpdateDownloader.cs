@@ -120,7 +120,12 @@ public sealed class UpdateDownloader
 
     private bool Download(ReleaseInfo r, string name, string dir, long maxBytes)
     {
-        if (!r.Assets.TryGetValue(name, out var url)) return Refuse(r.Version, $"fichier {name} absent de la release");
+        if (!r.Assets.TryGetValue(name, out var url))
+        {
+            // Pas noté à sauter : la release peut être en cours d'envoi, ou complétée après coup.
+            Say(Kind.Warn, $"mise à jour {r.Version} : fichier {name} absent de la release, nouvel essai au prochain lancement");
+            return false;
+        }
         File.WriteAllBytes(Path.Combine(dir, name), _fetch.Bytes(url, maxBytes, FileTimeout, _assetSource));
         return true;
     }

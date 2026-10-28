@@ -141,6 +141,20 @@ public sealed class DownloaderTests : IDisposable
     }
 
     [Fact]
+    public void FichierAbsentDeLaRelease_RetenteAuLancementSuivant()
+    {
+        Publish("0.5.0");
+        string complete = File.ReadAllText(ApiFile);
+        File.WriteAllText(ApiFile, System.Text.RegularExpressions.Regex.Replace(complete, @",\{""name"":""Ovomium\.dll""[^}]*\}", ""));
+        var m = Assert.Single(Check()); // release encore en cours d'envoi
+        Assert.Contains("absent de la release", m.Text);
+        Assert.Null(UpdateFiles.ReadSkipped(DataDir));
+        File.WriteAllText(ApiFile, complete);
+        Check();
+        Assert.Equal(new ModVersion(0, 5, 0), UpdateFiles.ReadyVersion(DataDir));
+    }
+
+    [Fact]
     public void RefuseeParLePlugin_PasRetelechargeeJusquALaSuivante()
     {
         UpdateFiles.Skip(DataDir, new ModVersion(0, 5, 0)); // noté par le plugin (update.rejected/)
