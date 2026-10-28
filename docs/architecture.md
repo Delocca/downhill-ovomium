@@ -14,6 +14,7 @@ Ovomium (anciennement LmdMulti) est un ensemble d'améliorations pour Lonely Mou
 | `src/Ovomium/` | Le mod : `OvomiumMod` (point d'entrée, relie tout), `Config` (MelonPreferences), `KeySetting` (touche réglable), `Log` |
 | `src/Ovomium/Game/` | Lecture de l'état du jeu : piste en cours, nom de piste, pseudo Steam |
 | `src/Ovomium/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
+| `src/Ovomium/Appearance/` | Apparence de chaque joueur : lecture du profil local (`LocalLook`), construction d'un gabarit par la fabrique du jeu (`LookBuilder`, voir `game-api.md` § 3), cache par apparence vidé à chaque changement de piste, au plus une construction par image (`LookCache`). Les marionnettes copient le gabarit ; copie du vélo local en attendant, ou si l'apparence est inconnue de ce jeu |
 | `src/Ovomium/Race/` | Course côté jeu : `RaceController` (session, commandes, réseau), `PadReader` (manette via Rewired), `RaceKeys` (noms des commandes à l'écran), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/Ovomium/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications |
 | `src/Ovomium/Tweaks/` | Confort hors multijoueur : `IntroSkip` (démarrage direct au menu, `SkipIntro`), `KeyLayout` + `KeyboardRemap` (touches lettres du jeu adaptées à la disposition du clavier, `KeyboardLayout`) |
@@ -58,13 +59,13 @@ Fil principal (Unity, OnUpdate)                     Fil réseau (UdpNode)
 - Annonces aussi envoyées en unicast aux IP manuelles (`ManualPeers`, ex. Tailscale) et à chaque pair connu : il suffit qu'un des deux entende l'autre pour que les deux se découvrent.
 - Les poses partent en unicast vers chaque pair (le broadcast Wi-Fi à 25 Hz est peu fiable).
 
-## Protocole (version 2)
+## Protocole (version 3)
 
-Petit-boutiste. En-tête de 12 octets **figé pour toutes les versions** : `'L' 'M'`, version (u8), type (u8), id d'instance de l'émetteur (u64, aléatoire à chaque lancement). Un paquet d'une autre version n'est jamais décodé : le pair est listé « version incompatible » et une notification s'affiche. La v2 (mod 0.2.0) n'est donc pas compatible avec la v1 (mod 0.1.0) : tout le monde doit mettre à jour, et le panneau le dit.
+Petit-boutiste. En-tête de 12 octets **figé pour toutes les versions** : `'L' 'M'`, version (u8), type (u8), id d'instance de l'émetteur (u64, aléatoire à chaque lancement). Un paquet d'une autre version n'est jamais décodé : le pair est listé « version incompatible » et une notification s'affiche. La v2 (mod 0.2.0) n'est donc pas compatible avec la v1 (mod 0.1.0), ni la v3 (apparence dans Announce) avec la v2 : tout le monde doit mettre à jour, et le panneau le dit.
 
 | Type | Contenu après l'en-tête |
 |---|---|
-| 1 Announce | SteamId u64, pseudo (u8 longueur + UTF-8, ≤ 48 o), piste (≤ 32 o, vide au menu), en piste u8, version du mod (≤ 16 o) |
+| 1 Announce | SteamId u64, pseudo (u8 longueur + UTF-8, ≤ 48 o), piste (≤ 32 o, vide au menu), en piste u8, version du mod (≤ 16 o), apparence (v3) : 11 × i32 (vélo, variante, tenue, couleurs peau / cheveux / barbe, corps, cheveux, barbe, casque, dos ; vélo 0 = inconnue) |
 | 2 Pose | temps émetteur ms u32, drapeaux u8 (1 = ragdoll, 2 = os présents), racine : position 3×f32 + rotation u32 ; si os : 31 rotations u32, masque de positions u32, puis 3×half par os du masque |
 | 3 Ping | temps de l'émetteur u32 |
 | 4 Pong | temps du ping u32 (renvoyé tel quel), heure du répondeur u32 (v2) |
@@ -162,6 +163,7 @@ Deux parties : le **mod** cherche, télécharge et vérifie ; le **plugin** `Ovo
   - `--count N` simule N joueurs dans un seul processus (ports 47710…, pseudos `Bot-1`…) : orbites de rayons croissants ou rejeux décalés de 1,5 s. Sert aux mesures de performance.
   - Il affiche ce qu'il reçoit (pseudo, piste, ping, poses, crash). Arrêt : Ctrl+C ou `pkill -f LmdBot` (SIGTERM), avec « Bye » dans les deux cas ; `kill -9` simule un jeu fermé brutalement (pas de « Bye »).
   - `--no-poses` : aucun fantôme chez les autres (course seule).
+  - `--look 5000,5231,337,0,10,0,2,1,104,57,612` : apparence annoncée (ici un chevalier ; ordre dans `--help`). Sans elle, apparence inconnue : copie du vélo du joueur.
   - **Course** (même logique que le mod, `RaceHost` / `RaceGuest`) : `--race join` accepte les invitations, « charge » `--race-load` s (3), roule `--race-time` s (25, +4 s par bot) en franchissant 7 checkpoints, `--race-dnf` abandonne à mi-course, `--race-decline` refuse. `--race host --race-track ID` lance une course (une fois) 3 s après avoir vu un vrai joueur. `--loss 0.3` jette 30 % des paquets émis. Les bots n'entendent que le jeu (pas les autres bots) : pour une course à plusieurs bots, c'est le jeu qui doit être l'hôte.
 - **Écran virtuel** (rendu complet sans toucher au bureau) : `tools/lmd-virtual.sh start|stop|shot` (`LMD_RES=1080` : écran 1920×1080, puis commande `res 1920 1080` de LmdExplorer pour agrandir la fenêtre du jeu, qui applique sinon ses propres réglages ; `stop` remet le registre du préfixe où Unity mémorise la taille), puis `tools/lmd-keys.sh enter` (lance le jeu si besoin et entre dans la piste sélectionnée au clavier), `drive NOM IPS Up:1.3 Up+Left:0.8 …` (roule en filmant, planche d'images dans `/tmp/NOM-montage.png`), `restart`, `menu`, `key`, `shot`. Voir l'en-tête du script pour les touches du jeu.
 - **Session bureau** : `tools/desktop-session.sh` (déploie, lance, guide, nettoie ; journal dans `/tmp/lmd-session/`).
@@ -197,7 +199,7 @@ Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même
 
 ## Limites connues
 
-- Les fantômes ont l'apparence (vélo, tenue) du joueur local : l'apparence de chacun n'est pas encore transmise (voir `game-api.md` § 3). Le style translucide le masque en partie.
+- Apparence des fantômes : celle de chaque joueur (v3), mais figée pour la piste en cours (une tenue changée sert au chargement suivant). Un contenu DLC que celui qui regarde ne possède pas n'a pas été testé : en cas d'échec, copie de son propre vélo.
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
 - Windows : l'installeur crée la règle de pare-feu (UAC) ; sans elle, au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés), question souvent cachée sous le jeu plein écran (`docs/distribution.md`).
 - Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; affichage au-delà de 1080p.
