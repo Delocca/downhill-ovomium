@@ -52,8 +52,10 @@ internal sealed class AutoUpdate
         else
         {
             string what = s.Result == UpdateOutcome.Rejected ? "refusée" : "échouée";
-            _notices.Post($"Mise à jour d'Ovomium {s.Version} {what} : {GuiKit.Esc(s.Reason)}", Bad, 20000);
-            Log.Warn($"mise à jour {s.Version} {what} par le plugin : {s.Reason}");
+            // Version vide si le manifeste n'a pas pu être lu (signature invalide, etc.).
+            string v = string.IsNullOrEmpty(s.Version) ? "" : " " + s.Version;
+            _notices.Post($"Mise à jour d'Ovomium{v} {what} : {GuiKit.Esc(s.Reason)}", Bad, 20000);
+            Log.Warn($"mise à jour{v} {what} par le plugin : {s.Reason}");
         }
         UpdateFiles.ClearState(_dataDir);
     }

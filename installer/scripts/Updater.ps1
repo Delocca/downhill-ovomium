@@ -4,7 +4,10 @@
 $script:UpdaterName = 'OvomiumUpdater.dll'
 # Mise à jour téléchargée en attente d'installation (au prochain lancement du jeu).
 $script:UpdaterPending = @('update', 'update.tmp')
-$script:UpdaterState = @('update', 'update.tmp', 'update-state.json', 'installed.json')
+# Tout l'état du plugin (Core/Update/UpdateFiles.cs ; « .tmp » : écriture interrompue). Les enregistrements
+# (UserData\Ovomium\recordings\) restent.
+$script:UpdaterState = @('update', 'update.tmp', 'update.rejected', 'update-state.json', 'update-state.json.tmp',
+    'installed.json', 'installed.json.tmp')
 
 function Get-UpdaterStateDir([string]$GameDir) {
     return Join-Path (Join-Path $GameDir 'UserData') 'Ovomium'

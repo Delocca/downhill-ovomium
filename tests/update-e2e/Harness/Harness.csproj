@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Harnais de tests/update-e2e/run-tests.sh : appelle par réflexion le code des DLL réellement installées dans un
+       faux jeu (Mods/Ovomium.dll, Plugins/OvomiumUpdater.dll). Aucune référence au code source. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

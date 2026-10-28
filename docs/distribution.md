@@ -30,6 +30,7 @@ downhill-ovomium-<v>/
     MelonLoader-LICENSE.md, MelonLoader-NOTICE.txt   Apache-2.0 (aussi dans melonloader/MelonLoader/Documentation)
     LMD-Camera.dll             mod de vues 1re / 3e personne de flo-st, 1.1.0, tel quel
     LMD-Camera-LICENSE.txt     sa licence MIT (source : installer/licences/, CRLF)
+    Ed25519-RFC8032-LICENSE.txt  notice BSD révisée (IETF Trust) du vérificateur Ed25519 des deux DLL Ovomium
     scripts/                   Common, Steam, Melon, Camera, Updater, Firewall, Install, Uninstall, Elevated (.ps1)
 ```
 
@@ -54,7 +55,9 @@ Noms de fichiers en ASCII (l'extracteur de zip de Windows gère mal les noms acc
 
 **Plugin de mise à jour (`Plugins/OvomiumUpdater.dll`).** Copié à chaque installation (dossier `Plugins/` créé si besoin). Une installation par-dessus efface une mise à jour téléchargée en attente (`UserData/Ovomium/update/`, `update.tmp/`) : elle serait plus ancienne que le paquet installé à la main (le plugin refuse déjà un retour arrière ; double sécurité). Il ne compte pas comme « autre mod » : sinon il empêcherait de retirer MelonLoader à la désinstallation.
 
-**Désinstalleur.** Retire `Mods/Ovomium.dll` (corbeille), `Mods/LMD-Camera.dll` s'il est identique à la copie livrée (voir ci-dessus), `Plugins/OvomiumUpdater.dll` et l'état de l'updater dans `UserData/Ovomium/` (`update/`, `update.tmp/`, `update-state.json`, `installed.json` ; le dossier s'il est vide), et la règle du groupe `Ovomium` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde les réglages (`UserData/Ovomium.cfg`) et le reste d'`UserData/`.
+**Notice Ed25519 (RFC 8032).** Le vérificateur de signatures (`src/Ovomium.Core/Update/Ed25519.cs`, compilé dans `Ovomium.dll` et `OvomiumUpdater.dll`) est adapté du code de la RFC 8032 (§ 6), sous licence BSD révisée de l'IETF Trust : sa clause « distribution binaire » exige de reproduire la notice dans la documentation livrée. D'où `fichiers/Ed25519-RFC8032-LICENSE.txt` (source `installer/licences/`, CRLF), cité dans le LISEZ-MOI. La mise à jour automatique ne livre que les DLL : la notice reste celle du zip installé (comme pour LMD-Camera).
+
+**Désinstalleur.** Retire `Mods/Ovomium.dll` (corbeille), `Mods/LMD-Camera.dll` s'il est identique à la copie livrée (voir ci-dessus), `Plugins/OvomiumUpdater.dll` et l'état de l'updater dans `UserData/Ovomium/` (`update/`, `update.tmp/`, `update.rejected/`, `update-state.json`, `installed.json` et leurs `.tmp` d'écriture interrompue ; le dossier s'il est vide, sinon il garde les enregistrements `recordings/`), et la règle du groupe `Ovomium` (UAC) ; propose de retirer MelonLoader seulement si aucun autre `.dll` dans `Mods/` ou `Plugins/` (sinon le garde sans question) ; garde les réglages (`UserData/Ovomium.cfg`) et le reste d'`UserData/`.
 
 **Journal** : `Ovomium-installation.log` / `Ovomium-desinstallation.log` à côté des `.bat` (ou `%TEMP%` si le dossier n'est pas inscriptible) ; l'étape administrateur écrit dans le même fichier.
 
@@ -106,12 +109,18 @@ Emballe, extrait le zip dans `/tmp/lmd-insttest/`, puis :
 1. **Analyse statique** (PSScriptAnalyzer 1.22.0 dans le conteneur `mcr.microsoft.com/powershell`) : syntaxe, commandes et types compatibles **Windows PowerShell 5.1** (profil Windows 10), BOM, erreurs d'analyse. Vérifié qu'elle attrape `??`, le ternaire et un paramètre propre à PS 7.
 2. **Scénarios PowerShell** sous pwsh (Linux, sans fenêtres, réponses par `-Answers`), sur une fausse arborescence Steam à deux bibliothèques (chemin avec espaces et accents) : installation neuve (jeu dans la 2e bibliothèque, config existante intacte), réinstallation (« à jour »), jeu introuvable (code 22, dossier choisi à la main, dossier invalide refusé), MelonLoader plus ancien (Oui / défaut Oui, ancien retiré, autres mods signalés et intacts), plus récent (gardé par défaut), `version.dll` étranger (abandon sans rien modifier / remplacement), MelonLoader incomplet (réparé), autre build du jeu (avertissement), désinstallation (Non → MelonLoader gardé ; défaut → retiré, `Mods` vide retiré, réglages gardés ; autre mod présent → gardé sans question), LMD-Camera (copié, « identique » à la réinstallation, ancienne version écrasée ; à la désinstallation retiré s'il est identique et ne retient alors pas MelonLoader, gardé et signalé s'il diffère, MelonLoader alors gardé sans question), lecture VDF (format récent avec chemins Windows échappés, ancien format), plugin de mise à jour (copié dans `Plugins/`, mise à jour en attente effacée à la réinstallation, retiré avec son état à la désinstallation, réglages gardés, ne retient pas MelonLoader).
 3. **`install-linux.sh`** sur une fausse arborescence Steam/Proton : installation, override dans la bonne section sans toucher au reste du registre, sauvegarde, idempotence, désinstallation (avec/sans MelonLoader), LMD-Camera (mêmes cas que sous PowerShell), préfixe absent, autre MelonLoader, jeu introuvable, ufw actif (port de la config ou par défaut) ou inactif, plugin de mise à jour (mêmes cas que sous PowerShell).
-4. **Paquet** : `LMD-Camera.dll` identique à `vendor/` et licence présente ; `OvomiumUpdater.dll` présent ; manifeste compact (clés dans l'ordre, version du zip, SHA-256 des DLL nues de `dist/`, identiques à celles du zip) ; zip et manifeste reproductibles (deux emballages → mêmes octets ; échoue à tort si la DLL du mod est recompilée pendant les tests).
+4. **Paquet** : `LMD-Camera.dll` identique à `vendor/` et licence présente ; notice Ed25519 présente ; `OvomiumUpdater.dll` présent ; manifeste compact (clés dans l'ordre, version du zip, SHA-256 des DLL nues de `dist/`, identiques à celles du zip) ; zip et manifeste reproductibles (deux emballages → mêmes octets ; échoue à tort si la DLL du mod est recompilée pendant les tests).
 
 ```
 tests/release/release-tests.sh
 ```
 
 Publication (`tools/release.sh`) sans GitHub ni vraie clé, dans une copie du dépôt sous `/tmp/lmd-reltest/` (DLL factices, clé Ed25519 jetable, faux `gh` qui journalise, `origin` = dépôt nu local) : essai à blanc (signature de 64 octets vérifiée par `openssl`, ni commit ni tag ni gh, changelog intact, rappel d'ouvrir le dépôt), autre clé privée refusée, arbre modifié refusé, publication (tag annoté poussé sur le commit « Changelog », changelog daté, release avec les 5 fichiers et les notes de « Non publié », rappel dépôt privé), version déjà publiée refusée, `CHANGELOG.md` absent (créé, arrêt).
+
+```
+tests/update-e2e/run-tests.sh
+```
+
+Publication et mise à jour automatique ensemble, sur les vrais binaires (besoin de `refs/`), dans `/tmp/lmd-e2etest/` : clé jetable (clé publique du mod remplacée dans la copie), version courante installée par `install-linux.sh` dans un faux jeu, version +1 passée par `release.sh --dry-run`, puis mod (téléchargement depuis un faux flux GitHub en `file://`) et plugin (installation), refus des artefacts altérés ou rejoués. Détails : `docs/architecture.md`, « Mise à jour automatique ».
 
 Hors de portée sous Linux (à tester sur un vrai Windows, voir la liste dans le rapport de livraison) : registre Steam, fenêtres (MessageBox, sélecteur de dossier), UAC, cmdlets du pare-feu et des profils réseau, corbeille, détection du jeu ouvert, SmartScreen / Smart App Control. Sous Wine 9, PowerShell 7 (.NET 8 et .NET 6) ne démarre pas ; seul le `.bat` a pu y être lancé (cas « zip non extrait » vérifié).

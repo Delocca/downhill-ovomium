@@ -15,8 +15,9 @@ APP_ID=711540
 EXE=LMD_Win_x64.exe
 CAMERA=LMD-Camera.dll
 UPDATER=OvomiumUpdater.dll
-# Fichiers d'état du plugin de mise à jour, dans UserData/Ovomium/ (les réglages Ovomium.cfg sont à part).
-UPDATER_STATE=(update update.tmp update-state.json installed.json)
+# Fichiers d'état du plugin de mise à jour, dans UserData/Ovomium/ (Core/Update/UpdateFiles.cs ; « .tmp » : écriture
+# interrompue). Les réglages Ovomium.cfg et les enregistrements (UserData/Ovomium/recordings/) restent.
+UPDATER_STATE=(update update.tmp update.rejected update-state.json update-state.json.tmp installed.json installed.json.tmp)
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAYLOAD="$HERE/fichiers"
 

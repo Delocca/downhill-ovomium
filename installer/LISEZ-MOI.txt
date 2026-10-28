@@ -134,7 +134,8 @@ les voyez pas. Autorisez Ovomium une fois : sudo ufw allow 47700/udp
 CONTENU ET LICENCES
 -------------------
 - Ovomium @MOD_VERSION@ (fichiers\Ovomium.dll, et fichiers\OvomiumUpdater.dll pour les
-  mises à jour automatiques), par Edia.
+  mises à jour automatiques), par Edia. Leur vérification de signature Ed25519 vient de
+  la RFC 8032 (licence BSD révisée de l'IETF Trust) : voir fichiers\Ed25519-RFC8032-LICENSE.txt.
 - MelonLoader @MELON_VERSION@ (fichiers\melonloader), chargeur de mods de LavaGang,
   licence Apache-2.0 : voir fichiers\MelonLoader-LICENSE.md et MelonLoader-NOTICE.txt.
   https://github.com/LavaGang/MelonLoader

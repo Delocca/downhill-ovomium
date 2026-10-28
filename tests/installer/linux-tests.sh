@@ -57,12 +57,14 @@ check 'grep -q "LMD-Camera copié.*identique" "$W/out.txt"' 'réinstallation : L
 check '[[ ! -e "$STATE/update" && ! -e "$STATE/update.tmp" && -f "$STATE/installed.json" ]] && grep -q "en attente effacée" "$W/out.txt"' \
     'réinstallation : mise à jour en attente effacée, état gardé'
 
-echo '{}' >"$STATE/update-state.json" && mkdir -p "$STATE/update" "$STATE/update.tmp"
+echo '{}' >"$STATE/update-state.json" && mkdir -p "$STATE/update" "$STATE/update.tmp" "$STATE/update.rejected" "$STATE/recordings"
+echo '{}' >"$STATE/installed.json.tmp" && echo x >"$STATE/recordings/r.bin"
 OVOMIUM_ANSWER=n run uninstall
 check '[[ ! -e "$GAME/Mods/Ovomium.dll" && -e "$GAME/version.dll" && $(count_override) == 1 ]]' 'désinstallation + n : MelonLoader et override gardés'
 check '[[ ! -e "$GAME/Mods/$CAM" ]]' 'désinstallation : LMD-Camera livré retiré'
-check '[[ ! -e "$GAME/Plugins/$UPD" && ! -e "$STATE" && -f "$GAME/UserData/Ovomium.cfg" ]]' \
-    'désinstallation : plugin et état de mise à jour retirés, réglages gardés'
+check '[[ ! -e "$GAME/Plugins/$UPD" && -f "$GAME/UserData/Ovomium.cfg" && -f "$STATE/recordings/r.bin" ]] &&
+    [[ $(ls -A "$STATE") == recordings ]]' 'désinstallation : plugin et état de mise à jour (rejected, .tmp) retirés, réglages et enregistrements gardés'
+rm -rf "$STATE/recordings"
 run; OVOMIUM_ANSWER=o run uninstall
 check 'grep -q "retirer aussi MelonLoader" "$W/out.txt"' 'désinstallation : LMD-Camera et plugin livrés ne comptent pas comme autres mods'
 check '[[ ! -e "$GAME/version.dll" && ! -d "$GAME/MelonLoader" && ! -d "$GAME/Mods" && ! -d "$GAME/Plugins" ]]' 'désinstallation + o : MelonLoader retiré'

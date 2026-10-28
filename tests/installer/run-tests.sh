@@ -3,7 +3,7 @@
 #  1. analyse PSScriptAnalyzer (syntaxe compatible Windows PowerShell 5.1) ;
 #  2. installeur/désinstalleur PowerShell sous pwsh (conteneur podman), fausse arborescence Steam ;
 #  3. install-linux.sh avec une fausse arborescence Steam/Proton ;
-#  4. paquet : LMD-Camera livré tel quel avec sa licence, plugin de mise à jour, manifeste, zip reproductible.
+#  4. paquet : LMD-Camera livré tel quel avec sa licence, notice Ed25519, plugin de mise à jour, manifeste, zip reproductible.
 # La chaîne de publication signée (tools/release.sh) a ses propres tests : tests/release/release-tests.sh.
 # Usage : tests/installer/run-tests.sh [--no-build]   (journal : /tmp/lmd-insttest/)
 # Le registre, les fenêtres, le pare-feu et l'UAC ne sont testables que sur un vrai Windows.
@@ -58,6 +58,12 @@ check_camera_payload() { # LMD-Camera livré tel quel (même fichier que vendor/
         echo "OK   LMD-Camera.dll tel quel + licence MIT dans fichiers/"
     else
         echo "ÉCHEC LMD-Camera.dll ou sa licence absents/modifiés dans fichiers/"; return 1
+    fi
+    if grep -q 'IETF Trust' "$DIST/fichiers/Ed25519-RFC8032-LICENSE.txt" 2>/dev/null &&
+        grep -q 'Ed25519-RFC8032-LICENSE.txt' "$DIST/LISEZ-MOI.txt"; then
+        echo "OK   notice Ed25519 (RFC 8032, BSD révisée) dans fichiers/, citée dans le LISEZ-MOI"
+    else
+        echo "ÉCHEC notice Ed25519 absente de fichiers/ ou du LISEZ-MOI"; return 1
     fi
 }
 

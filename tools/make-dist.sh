@@ -100,6 +100,8 @@ stage() { # dossier de travail → arborescence du zip
     cp "$out/fichiers/melonloader/MelonLoader/Documentation/NOTICE.txt" "$out/fichiers/MelonLoader-NOTICE.txt"
     cp "$CAMERA_DLL" "$out/fichiers/LMD-Camera.dll"
     to_windows "$src/licences/LMD-Camera-LICENSE.txt" "$out/fichiers/LMD-Camera-LICENSE.txt"
+    # Vérificateur Ed25519 des deux DLL Ovomium : notice BSD révisée (IETF Trust) exigée en distribution binaire.
+    to_windows "$src/licences/Ed25519-RFC8032-LICENSE.txt" "$out/fichiers/Ed25519-RFC8032-LICENSE.txt"
 }
 
 pack() { # dossier de travail → dist/NAME.zip (ordre et dates fixes : zip reproductible)

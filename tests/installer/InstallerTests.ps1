@@ -145,11 +145,16 @@ function Test-Uninstall($Installed) {
     $e = $Installed
     Write-Text (P $e.Game 'UserData/Ovomium/update-state.json') '{}'
     Write-Text (P $e.Game 'UserData/Ovomium/update/Ovomium.dll') 'en attente'
+    Write-Text (P $e.Game 'UserData/Ovomium/update.rejected/Ovomium.dll') 'refusée'
+    Write-Text (P $e.Game 'UserData/Ovomium/installed.json.tmp') '{}'
+    Write-Text (P $e.Game 'UserData/Ovomium/recordings/r.bin') 'x'
     $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Non'
     Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'Mods/Ovomium.dll'))) 'désinstallation : DLL retirée'
     Check (-not (Test-Path (P $e.Game 'Mods/LMD-Camera.dll'))) 'désinstallation : LMD-Camera livré retiré'
-    Check (-not (Test-Path (P $e.Game 'Plugins/OvomiumUpdater.dll')) -and -not (Test-Path (P $e.Game 'UserData/Ovomium')) -and
-        (Test-Path (P $e.Game 'UserData/Ovomium.cfg'))) 'désinstallation : plugin et état de mise à jour retirés, réglages gardés'
+    $left = @(Get-ChildItem -LiteralPath (P $e.Game 'UserData/Ovomium') -Force | ForEach-Object Name)
+    Check (-not (Test-Path (P $e.Game 'Plugins/OvomiumUpdater.dll')) -and ($left -join ',') -eq 'recordings' -and
+        (Test-Path (P $e.Game 'UserData/Ovomium.cfg'))) 'désinstallation : plugin et état de mise à jour (rejected, .tmp) retirés, réglages et enregistrements gardés'
+    Remove-Item -LiteralPath (P $e.Game 'UserData/Ovomium') -Recurse -Force
     Check (Test-Path (P $e.Game 'version.dll')) 'désinstallation + Non : MelonLoader gardé'
     [void](Invoke-Installer 'Install.ps1' $e)
     $code = Invoke-Installer 'Uninstall.ps1' $e
