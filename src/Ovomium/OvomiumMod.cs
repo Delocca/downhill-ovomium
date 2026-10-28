@@ -137,7 +137,7 @@ public class OvomiumMod : MelonMod
             name = $"Joueur-{_node.Id % 10000:D4}";
         }
         _myName = name.Trim();
-        _node.SetLocal(_myName, steamId, track, track != null);
+        _node.SetLocal(_myName, steamId, track, track != null, Appearance.LocalLook.Read());
     }
 
     private void DrainEvents()

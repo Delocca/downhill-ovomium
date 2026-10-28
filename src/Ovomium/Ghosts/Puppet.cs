@@ -5,7 +5,8 @@ using UnityEngine;
 namespace Ovomium.Ghosts;
 
 /// Marionnette : copie visuelle du vélo local sans scripts ni physique, pilotée par des poses reçues.
-/// Méthode vérifiée par l'explorateur (docs/game-api.md § 3). Apparence = celle du joueur local (v0).
+/// Méthode vérifiée par l'explorateur (docs/game-api.md § 3). Modèle copié : gabarit de l'apparence
+/// du joueur (Appearance/LookCache), ou à défaut le vélo local.
 internal sealed class Puppet
 {
     private readonly GameObject _go;
@@ -80,10 +81,13 @@ internal sealed class Puppet
     }
 
     /// Retire tout ce qui simule ou réagit : joints, scripts, colliders, rigidbodies ; coupe l'Animator.
-    private static void Strip(GameObject go)
+    internal static void Strip(GameObject go)
     {
         foreach (var j in go.GetComponentsInChildren<Joint>(true)) Object.DestroyImmediate(j);
         foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true)) Object.DestroyImmediate(mb);
+        // Après les scripts (qui peuvent les exiger) : sources audio Unity, Behaviours natifs.
+        foreach (var b in go.GetComponentsInChildren<Behaviour>(true))
+            if (b.GetIl2CppType().Name == "AudioSource") Object.DestroyImmediate(b);
         foreach (var col in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(col);
         foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) Object.DestroyImmediate(rb);
         foreach (var a in go.GetComponentsInChildren<Animator>(true)) a.enabled = false;

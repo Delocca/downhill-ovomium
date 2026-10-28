@@ -76,7 +76,7 @@ internal static class Program
             // Ancre de l'orbite : un vrai joueur (deux bots qui s'orbitent mutuellement divergent).
             var anchorPeer = names.Values.FirstOrDefault(p => p.IsCompatible && p.OnTrack && p.ModVersion != "bot" && stats.ContainsKey(p.Id));
             string track = race?.Track ?? fixedTrack ?? anchorPeer?.Track ?? names.Values.FirstOrDefault(p => p.OnTrack)?.Track;
-            node.SetLocal(o.Name, 76561190000000000UL + (node.Id & 0xFFFF), track ?? "", track != null);
+            node.SetLocal(o.Name, 76561190000000000UL + (node.Id & 0xFFFF), track ?? "", track != null, o.Look);
             if (track != null && !o.NoPoses)
             {
                 double now = NetClock.NowMs;

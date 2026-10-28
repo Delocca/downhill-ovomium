@@ -87,7 +87,7 @@ public sealed partial class UdpNode
     private void HandleEchoPose(int len, double now)
     {
         var local = Local() ?? new Announce();
-        var echo = new Announce { Name = local.Name + " (écho)", SteamId = local.SteamId, Track = local.Track, OnTrack = local.OnTrack, ModVersion = local.ModVersion };
+        var echo = new Announce { Name = local.Name + " (écho)", SteamId = local.SteamId, Track = local.Track, OnTrack = local.OnTrack, ModVersion = local.ModVersion, Look = local.Look };
         _peers.OnAnnounce(EchoId, echo, null, now, isEcho: true);
         _peers.Touch(EchoId, null, now, countPose: true);
         EnqueuePose(EchoId, len, now);

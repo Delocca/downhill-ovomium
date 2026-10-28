@@ -31,8 +31,8 @@ internal sealed class PeerTable
                 if (_peers.Count >= MaxPeers) return;
                 p = _peers[id] = new PeerInfo { Id = id, IsEcho = isEcho };
             }
-            bool changed = p.Name != a.Name || p.Track != a.Track || p.OnTrack != a.OnTrack;
-            p.SteamId = a.SteamId; p.Name = a.Name; p.Track = a.Track; p.OnTrack = a.OnTrack;
+            bool changed = p.Name != a.Name || p.Track != a.Track || p.OnTrack != a.OnTrack || p.Look != a.Look;
+            p.SteamId = a.SteamId; p.Name = a.Name; p.Track = a.Track; p.OnTrack = a.OnTrack; p.Look = a.Look;
             p.ModVersion = a.ModVersion; p.EndPoint = ep; p.LastSeenMs = now;
             if (isNew || changed) Emit(isNew ? NetEventKind.PeerJoined : NetEventKind.PeerChanged, p);
         }

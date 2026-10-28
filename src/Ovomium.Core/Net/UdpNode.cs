@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Ovomium.Core.Appearance;
 using Ovomium.Core.Protocol;
 
 namespace Ovomium.Core.Net;
@@ -67,10 +68,10 @@ public sealed partial class UdpNode : IDisposable
     }
 
     /// État local diffusé dans les annonces (appelé par le fil principal, ~2 Hz).
-    public void SetLocal(string name, ulong steamId, string track, bool onTrack)
+    public void SetLocal(string name, ulong steamId, string track, bool onTrack, RiderLook look = default)
     {
         lock (_localLock)
-            _local = new Announce { Name = name, SteamId = steamId, Track = track ?? "", OnTrack = onTrack, ModVersion = _o.ModVersion };
+            _local = new Announce { Name = name, SteamId = steamId, Track = track ?? "", OnTrack = onTrack, ModVersion = _o.ModVersion, Look = look };
     }
 
     private Announce Local() { lock (_localLock) return _local; }

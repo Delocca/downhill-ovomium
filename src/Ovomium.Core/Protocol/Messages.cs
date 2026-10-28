@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Numerics;
+using Ovomium.Core.Appearance;
 using Ovomium.Core.Poses;
 
 namespace Ovomium.Core.Protocol;
@@ -26,6 +27,7 @@ public sealed class Announce
     public string Track = "";
     public bool OnTrack;
     public string ModVersion = "";
+    public RiderLook Look;
 }
 
 /// Encodage / décodage des messages (format décrit dans docs/architecture.md).
@@ -58,11 +60,13 @@ public static class Messages
         w.Str(a.Track, 32);
         w.U8(a.OnTrack ? (byte)1 : (byte)0);
         w.Str(a.ModVersion, 16);
+        a.Look.Write(w);
     }
 
     public static Announce ReadAnnounce(PacketReader r) => new()
     {
         SteamId = r.U64(), Name = r.Str(), Track = r.Str(), OnTrack = r.U8() != 0, ModVersion = r.Str(),
+        Look = RiderLook.Read(r),
     };
 
     public static void WritePose(PacketWriter w, ulong senderId, PoseFrame f)

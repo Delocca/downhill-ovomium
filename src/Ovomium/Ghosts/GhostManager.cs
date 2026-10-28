@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Ovomium.Appearance;
 using Ovomium.Core.Net;
 using Ovomium.Core.Poses;
 using UnityEngine;
@@ -17,9 +18,11 @@ internal sealed class GhostManager
         public Puppet Puppet;
         public readonly PoseFrame Sampled = new();
         public double RetryAtMs; // après un échec de création de marionnette
+        public bool Provisional; // copie du vélo local en attendant le gabarit de son apparence
     }
 
     private readonly Dictionary<ulong, Ghost> _ghosts = new();
+    private readonly LookCache _looks = new();
 
     public int VisibleCount { get; private set; }
 
@@ -48,6 +51,7 @@ internal sealed class GhostManager
     /// source : vélo local servant de modèle.
     public void Update(string myTrack, GameObject source, double nowMs)
     {
+        Log.Try("apparences", () => _looks.Tick(myTrack, source));
         int visible = 0;
         foreach (var g in _ghosts.Values)
         {
@@ -69,12 +73,16 @@ internal sealed class GhostManager
         if (g.Puppet != null && (!show || !g.Puppet.IsAlive)) Hide(g);
         if (!show) return false;
         if (g.Buffer.Sample(nowMs, delay, g.Sampled) == SampleStatus.Empty) return false;
+        if (g.Puppet != null && g.Provisional && !_looks.IsPending(g.Info.Look)) Hide(g); // gabarit prêt (ou en échec)
         if (g.Puppet == null)
         {
             if (nowMs < g.RetryAtMs) return false;
-            g.Puppet = Puppet.Create(source, g.Info.Name, ColorOf(g), GhostLook.Parse(Config.GhostStyle.Value));
+            var model = _looks.Get(g.Info.Look);
+            g.Provisional = model == null && _looks.IsPending(g.Info.Look);
+            g.Puppet = Puppet.Create(model ?? source, g.Info.Name, ColorOf(g), GhostLook.Parse(Config.GhostStyle.Value));
             if (g.Puppet == null) { g.RetryAtMs = nowMs + 5000; Log.Warn($"marionnette impossible pour {g.Info.Name}"); return false; }
-            Log.Info($"fantôme créé : {g.Info.Name} ({g.Info.Track})");
+            string kind = model != null ? "son apparence" : g.Provisional ? "copie provisoire" : "copie du vélo local";
+            Log.Info($"fantôme créé : {g.Info.Name} ({g.Info.Track}, {kind})");
         }
         g.Puppet.Apply(g.Sampled);
         return true;

@@ -5,7 +5,8 @@ public static class ProtocolInfo
 {
     /// Version du format binaire : un pair d'une autre version est signalé, jamais décodé.
     /// v2 : Pong porte l'heure du répondeur (synchro d'horloge), messages fiables (course).
-    public const byte Version = 2;
+    /// v3 : Announce porte l'apparence du joueur (RiderLook).
+    public const byte Version = 3;
 
     public const byte Magic0 = (byte)'L', Magic1 = (byte)'M';
 

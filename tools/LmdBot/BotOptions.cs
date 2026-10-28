@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Ovomium.Core.Appearance;
 using Ovomium.Core.Net;
 using Ovomium.Core.Poses;
 
@@ -25,6 +26,9 @@ internal sealed class BotOptions
   --duration S      s'arrête après S secondes (défaut : Ctrl+C)
   --loss P          jette volontairement cette part des paquets émis (0 à 1) : éprouve les renvois
   --no-poses        n'envoie aucune pose : pas de fantôme chez les autres (course seule)
+  --look L          apparence annoncée : 11 entiers séparés par des virgules (vélo, variante, tenue,
+                    couleurs peau/cheveux/barbe, corps, cheveux, barbe, casque, dos), ex.
+                    5000,5231,337,6,6,0,2,1,104,57,612 (défaut : inconnue, copie du vélo du joueur)
 Course :
   --race join       accepte les invitations, charge --race-load s, roule --race-time s (+4 s par bot)
   --race host       lance une course --race-delay s après avoir vu un vrai joueur (une seule fois)
@@ -45,6 +49,7 @@ Course :
     public string RaceMode, RaceTrack;
     public double RaceTimeS = 25, RaceLoadS = 3, RaceDelayS = 3;
     public bool RaceDecline, RaceDnf, NoPoses;
+    public RiderLook Look;
 
     public static BotOptions Parse(string[] args)
     {
@@ -67,6 +72,7 @@ Course :
                 case "--duration": o.DurationS = Num(Next()); break;
                 case "--loss": o.Loss = Math.Clamp(Num(Next()), 0, 0.9); break;
                 case "--no-poses": o.NoPoses = true; break;
+                case "--look": o.Look = ParseLook(Next()); break;
                 case "--race": o.RaceMode = Next() is "join" or "host" ? args[i] : throw new ArgumentException("--race join|host"); break;
                 case "--race-track": o.RaceTrack = Next(); break;
                 case "--race-time": o.RaceTimeS = Num(Next()); break;
@@ -98,6 +104,13 @@ Course :
         Port = Port, DiscoveryPort = TargetPort, Broadcast = Broadcast, ModVersion = "bot", SimulatedLoss = Loss,
         ManualPeers = Endpoints.ParsePeers(string.Join(",", Peers), TargetPort, Console.Error.WriteLine),
     };
+
+    private static RiderLook ParseLook(string s)
+    {
+        int[] v = s.Split(',').Select(int.Parse).ToArray();
+        if (v.Length != 11) throw new ArgumentException("--look : 11 entiers attendus");
+        return new RiderLook(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10]);
+    }
 
     private static double Num(string s) => double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
 

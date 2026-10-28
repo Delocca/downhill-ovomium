@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
+using Ovomium.Core.Appearance;
 using Ovomium.Core.Poses;
 using Ovomium.Core.Protocol;
 
@@ -45,6 +46,7 @@ public sealed class PeerInfo
     public string Track = "";
     public bool OnTrack;
     public string ModVersion = "";
+    public RiderLook Look;
     public IPEndPoint EndPoint;
     public double LastSeenMs;
     /// Temps aller-retour lissé, -1 tant qu'inconnu.
