@@ -3,6 +3,7 @@
 //   mod <jeu> <apiUrl>   comme AutoUpdate.Init puis Update : installed.json, UpdateDownloader.Run, messages Outbox
 //   plugin <jeu>         comme UpdaterPlugin.OnPreInitialization : UpdateInstaller.Run
 //   version <dll>        InstalledVersion.FromMelonDll (argument version de MelonInfo)
+//   plugin-hors-melonloader <jeu>   OnPreInitialization sans MelonLoader initialisé : aucune exception ne doit sortir
 // Variable OVOMIUM_REFS : dossier refs/ (MelonLoader.dll, pour charger le type UpdaterPlugin).
 using System.Collections;
 using System.Reflection;
@@ -17,8 +18,21 @@ static class Harness
         "mod" => Mod(a[1], a[2]),
         "plugin" => Plugin(a[1]),
         "version" => PrintVersion(a[1]),
+        "plugin-hors-melonloader" => PluginWithoutMelonLoader(a[1]),
         _ => 2,
     };
+
+    /// OnPreInitialization appelé sur un plugin que MelonLoader n'a pas initialisé (ni environnement, ni journal) :
+    /// rien ne doit en sortir. Code 0 si aucune exception ne s'échappe.
+    static int PluginWithoutMelonLoader(string game)
+    {
+        var type = T(Load(Path.Combine(game, "Plugins", "OvomiumUpdater.dll")), "Ovomium.Updater.UpdaterPlugin");
+        var plugin = Activator.CreateInstance(type);
+        try { type.GetMethod("OnPreInitialization").Invoke(plugin, null); }
+        catch (TargetInvocationException e) { Console.WriteLine($"exception sortie : {e.InnerException?.GetType().Name}"); return 1; }
+        Console.WriteLine("aucune exception sortie");
+        return 0;
+    }
 
     /// Copie chargée (la DLL d'origine peut être remplacée ensuite), dépendances cherchées dans refs/.
     static Assembly Load(string dll)

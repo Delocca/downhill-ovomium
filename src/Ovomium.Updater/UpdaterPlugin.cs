@@ -29,16 +29,33 @@ public sealed class UpdaterPlugin : MelonPlugin
         try
         {
             string dataDir = Path.Combine(MelonEnvironment.UserDataDirectory, "Ovomium");
-            var o = UpdateInstaller.Run(dataDir, MelonEnvironment.ModsDirectory, UpdaterVersion, UpdatePackage.ReleaseKey, LoggerInstance.Msg);
+            var o = UpdateInstaller.Run(dataDir, MelonEnvironment.ModsDirectory, UpdaterVersion, UpdatePackage.ReleaseKey, s => Say(0, s));
             if (o == null) return; // aucun paquet prêt : cas courant, rien à dire
             string what = $"mise à jour d'Ovomium {o.Version ?? "?"} : {o.Result}{(string.IsNullOrEmpty(o.Reason) ? "" : $" ({o.Reason})")}";
-            if (o.Result == UpdateOutcome.Installed) LoggerInstance.Msg(what);
-            else LoggerInstance.Warning(what + " ; paquet mis de côté dans UserData/Ovomium/" + UpdateFiles.QuarantineDir);
+            if (o.Result == UpdateOutcome.Installed) Say(0, what);
+            else Say(1, what + " ; paquet mis de côté dans UserData/Ovomium/" + UpdateFiles.QuarantineDir);
         }
         catch (Exception e)
         {
             // Jamais d'exception vers MelonLoader : le jeu doit démarrer quoi qu'il arrive.
-            LoggerInstance.Error($"mise à jour : {e.GetType().Name} : {e.Message}");
+            Say(2, $"mise à jour : {e.GetType().Name} : {e.Message}");
+        }
+    }
+
+    /// Journal qui ne lève jamais (0 info, 1 avertissement, 2 erreur) : console si le journal de MelonLoader n'est pas
+    /// prêt, rien si elle non plus.
+    private void Say(int level, string text)
+    {
+        try
+        {
+            if (level == 0) LoggerInstance.Msg(text);
+            else if (level == 1) LoggerInstance.Warning(text);
+            else LoggerInstance.Error(text);
+        }
+        catch (Exception)
+        {
+            try { Console.Error.WriteLine($"[{MelonName}] {text}"); }
+            catch (Exception) { }
         }
     }
 }

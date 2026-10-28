@@ -4,7 +4,8 @@
 # la signature est faite par tools/release.sh), Ovomium.dll et LMD-Camera.dll nus.
 #   tools/make-dist.sh            compile le mod et le plugin (Release) puis emballe
 #   tools/make-dist.sh --no-build emballe les DLL déjà compilées
-# Besoins : refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip et vendor/LMD-Camera-1.1.0/LMD-Camera.dll
+# Refuse d'emballer si le MelonInfo de Ovomium.dll ne porte pas OvomiumMod.Version (tools/MelonVersion).
+# Besoins : dotnet, refs/ (pour compiler), vendor/MelonLoader.x64-0.7.3.zip et vendor/LMD-Camera-1.1.0/LMD-Camera.dll
 # (téléchargés si absents, empreintes vérifiées).
 # Voir docs/distribution.md.
 set -euo pipefail
@@ -46,6 +47,23 @@ build_mod() {
     [[ "${1:-}" == --no-build ]] && return
     dotnet build "$ROOT/src/Ovomium" -c Release -nologo -v quiet
     dotnet build "$UPDATER_DIR" -c Release -nologo -v quiet
+}
+
+# Version du MelonInfo d'une DLL, lue comme le fait le plugin (tools/MelonVersion, compilé dans $WORK).
+melon_version() {
+    [[ -f "$WORK/melon-version/MelonVersion.dll" ]] ||
+        dotnet build "$ROOT/tools/MelonVersion" -c Release -nologo -v quiet -o "$WORK/melon-version" >"$WORK/melon-version.log" 2>&1 ||
+        { cat "$WORK/melon-version.log" >&2; echo "tools/MelonVersion ne compile pas" >&2; exit 1; }
+    dotnet "$WORK/melon-version/MelonVersion.dll" "$1"
+}
+
+# La DLL emballée doit se déclarer de la version publiée. Sinon (--no-build après un changement de version sans
+# recompiler), installée, elle se dirait plus ancienne et chaque joueur retéléchargerait la mise à jour en boucle.
+check_mod_version() {
+    local declared
+    declared=$(melon_version "$DLL") || exit 1
+    [[ "$declared" == "$MOD_VERSION" ]] ||
+        { echo "$DLL se déclare $declared, pas $MOD_VERSION (OvomiumMod.Version) : recompile (sans --no-build)" >&2; exit 1; }
 }
 
 # minUpdater du manifeste = constante UpdaterVersion du plugin (le plugin refuse un manifeste qui en exige plus).
@@ -123,6 +141,7 @@ main() {
     for f in "$DLL" "$UPDATER_DLL"; do [[ -f "$f" ]] || { echo "DLL absente : $f" >&2; exit 1; }; done
     WORK=$(mktemp -d /tmp/lmd-dist.XXXXXX)
     trap 'rm -rf "$WORK"' EXIT
+    check_mod_version
     stage "$WORK"
     write_update_files
     pack "$WORK" # en dernier : ses deux lignes (chemin du zip, SHA-256) sont lues par les tests

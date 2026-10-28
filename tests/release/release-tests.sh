@@ -11,13 +11,29 @@ R="$W/repo"
 FAIL=0
 check() { if eval "$1"; then echo "OK   $2"; else echo "ÉCHEC $2"; FAIL=1; fi; }
 
+# Fausse Ovomium.dll compilée : rien qu'un attribut MelonInfo (faux, même nom) de la version donnée, que make-dist
+# et release.sh lisent pour vérifier la version.
+fake_mod() {
+    local d="$W/fakemod"
+    mkdir -p "$d"
+    printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><AssemblyName>Ovomium</AssemblyName></PropertyGroup></Project>\n' >"$d/Ovomium.csproj"
+    cat >"$d/Fake.cs" <<EOF
+[assembly: MelonLoader.MelonInfo(typeof(Fake.Mod), "Ovomium", "$1", "Edia")]
+namespace Fake { public class Mod { } }
+namespace MelonLoader { [System.AttributeUsage(System.AttributeTargets.Assembly)] public sealed class MelonInfoAttribute : System.Attribute
+    { public MelonInfoAttribute(System.Type t, string name, string version, string author) { } } }
+EOF
+    dotnet build "$d" -nologo -v quiet -o "$d/out" >"$W/fakemod.log" 2>&1 || { cat "$W/fakemod.log"; exit 1; }
+    cp "$d/out/Ovomium.dll" "$R/src/Ovomium/bin/Release/net6.0/Ovomium.dll"
+}
+
 setup_repo() {
     rm -rf "$W" && mkdir -p "$W/bin"
     git init -q "$R"
     (cd "$ROOT" && git ls-files -co --exclude-standard -z | xargs -0 tar -cf -) | tar -xf - -C "$R"
     [[ -d "$ROOT/vendor" ]] && cp -r "$ROOT/vendor" "$R/vendor"
     mkdir -p "$R/src/Ovomium/bin/Release/net6.0" "$R/src/Ovomium.Updater/bin/Release/net6.0"
-    echo "faux mod" >"$R/src/Ovomium/bin/Release/net6.0/Ovomium.dll"
+    fake_mod "$(sed -n 's/.*const string Version = "\([^"]*\)".*/\1/p' "$R/src/Ovomium/OvomiumMod.cs")"
     echo "faux plugin" >"$R/src/Ovomium.Updater/bin/Release/net6.0/OvomiumUpdater.dll"
     openssl genpkey -algorithm ed25519 -out "$W/key.pem" 2>/dev/null
     openssl genpkey -algorithm ed25519 -out "$W/other-key.pem" 2>/dev/null
@@ -65,6 +81,31 @@ check 'grep -q "tools/repo-visibility.sh public" "$W/out.txt"' 'essai à blanc :
 
 KEY="$W/other-key.pem" release --dry-run; code=$?
 check '[[ $code != 0 ]] && grep -q "ne correspond pas" "$W/out.txt"' 'autre clé privée : refusée avant signature'
+
+openssl genpkey -algorithm ec -pkeyopt ec_paramgen_curve:P-256 -out "$W/ec-key.pem" 2>/dev/null
+echo "pas une clé" >"$W/junk-key.pem"
+KEY="$W/ec-key.pem" release --dry-run; code=$?
+check '[[ $code != 0 ]] && grep -q "pas une clé privée Ed25519" "$W/out.txt"' 'clé EC (pas Ed25519) : refusée'
+KEY="$W/junk-key.pem" release --dry-run; code=$?
+check '[[ $code != 0 ]] && grep -q "pas une clé privée Ed25519" "$W/out.txt"' 'fichier de clé illisible : refusé'
+
+# Version augmentée sans recompiler (--no-build) : la DLL se dit encore $VERSION.
+bumped=$(python3 -I -c 'import sys; a=sys.argv[1].split("."); a[2]=str(int(a[2])+1); print(".".join(a))' "$VERSION")
+python3 -I -c 'import sys; p=sys.argv[1]; s=open(p).read(); open(p,"w").write(s.replace(f"Version = \"{sys.argv[2]}\"", f"Version = \"{sys.argv[3]}\"", 1))' \
+    "$R/src/Ovomium/OvomiumMod.cs" "$VERSION" "$bumped"
+git -C "$R" -c user.name=t -c user.email=t@t commit -qam "version $bumped"
+release --dry-run; code=$?
+check '[[ $code != 0 ]] && grep -q "se déclare $VERSION, pas $bumped" "$W/out.txt" && [[ ! -e "$R/dist/downhill-ovomium-$bumped.zip" ]]' \
+    'version augmentée sans recompiler : paquet refusé'
+git -C "$R" reset -q --hard HEAD~1
+
+IFS=. read -r major minor _ <<<"$VERSION"
+git -C "$R" tag "v$major.$((minor + 10)).0" # plus récente, mais avant $VERSION dans l'ordre alphabétique
+release --dry-run; code=$?
+check '[[ $code != 0 ]] && grep -q "pas plus récente que le dernier tag v$major.$((minor + 10)).0" "$W/out.txt"' \
+    'version inférieure au dernier tag (comparaison numérique) : refusée'
+git -C "$R" tag -d "v$major.$((minor + 10)).0" >/dev/null
+git -C "$R" tag v0.0.1 # plus ancienne : acceptée
 
 echo modif >>"$R/CHANGELOG.md"
 release; code=$?

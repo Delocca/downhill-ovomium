@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Affiche la version déclarée par le MelonInfo d'une DLL (même lecture que le plugin : InstalledVersion), pour
+       que tools/make-dist.sh et tools/release.sh refusent une DLL qui ne porte pas la version publiée.
+       Usage : dotnet MelonVersion.dll <chemin de Ovomium.dll>   (code 1 si illisible) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Ovomium.Core/Update/*.cs" Link="Core/Update/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

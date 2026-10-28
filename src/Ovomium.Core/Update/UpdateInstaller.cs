@@ -17,18 +17,41 @@ public static class UpdateInstaller
         public bool HadOld, Placed;
     }
 
-    /// null : aucun paquet prêt (rien n'est écrit). Sinon le résultat, aussi écrit dans update-state.json.
+    /// null : aucun paquet prêt (rien n'est écrit). Sinon le résultat, aussi écrit dans update-state.json ; un
+    /// paquet refusé ou en échec est en plus noté dans update-skip.json (le mod ne le retélécharge pas).
     public static UpdateOutcome Run(string dataDir, string modsDir, int updaterVersion, byte[] publicKey, Action<string> log)
     {
+        RestoreBackups(modsDir, log);
         string dir = Path.Combine(dataDir, UpdateFiles.ReadyDir);
         if (!Directory.Exists(dir)) return null;
         UpdateOutcome outcome;
         try { outcome = Install(dir, dataDir, modsDir, updaterVersion, publicKey, log); }
         catch (Exception e) { outcome = Outcome(UpdateOutcome.Failed, null, $"{e.GetType().Name} : {e.Message}"); }
         if (outcome.Result == UpdateOutcome.Installed) TryDelete(dir, log);
-        else Quarantine(dir, dataDir, log);
+        else
+        {
+            // Version annoncée, même non vérifiée (signature fausse) : elle ne sert qu'à ne pas la retélécharger.
+            var refused = ModVersion.TryParse(outcome.Version, out var v) ? (ModVersion?)v : UpdateFiles.ReadyVersion(dataDir);
+            try { if (refused != null) UpdateFiles.Skip(dataDir, refused.Value); }
+            catch (Exception e) { log($"{UpdateFiles.SkipFile} non écrit : {e.Message}"); }
+            Quarantine(dir, dataDir, log);
+        }
         UpdateFiles.WriteState(dataDir, outcome);
         return outcome;
+    }
+
+    /// Arrêt brutal pendant un remplacement (Swap) : cible déjà renommée en « .old », nouvelle version pas encore en
+    /// place. On remet l'ancienne ; si le paquet est encore là, il sera réinstallé (réparation si même version).
+    private static void RestoreBackups(string modsDir, Action<string> log)
+    {
+        if (!Directory.Exists(modsDir)) return;
+        foreach (var backup in Directory.GetFiles(modsDir, "*.dll.old"))
+        {
+            string target = backup[..^".old".Length];
+            if (File.Exists(target)) continue;
+            try { File.Move(backup, target); log($"{Path.GetFileName(target)} remis en place (installation précédente interrompue)"); }
+            catch (Exception e) { log($"impossible de remettre {Path.GetFileName(target)} en place : {e.Message}"); }
+        }
     }
 
     private static UpdateOutcome Install(string dir, string dataDir, string modsDir, int updaterVersion, byte[] key, Action<string> log)
@@ -38,8 +61,12 @@ public static class UpdateInstaller
         string v = m.Version.ToString();
         var installed = InstalledVersion.Read(modsDir, dataDir);
         if (installed == null) return Outcome(UpdateOutcome.Rejected, v, "version installée inconnue (ni Ovomium.dll lisible, ni installed.json)");
-        if (!UpdatePackage.CheckVersions(m, installed.Value, updaterVersion, out reason)) return Outcome(UpdateOutcome.Rejected, v, reason);
+        // Même version mais fichiers de Mods/ différents du paquet signé (installation interrompue, fichier abîmé) :
+        // réinstaller n'est pas un retour arrière.
+        bool repair = m.Version == installed.Value && UpdatePackage.DiffersFrom(modsDir, m);
+        if (!UpdatePackage.CheckVersions(m, installed.Value, updaterVersion, out reason, repair)) return Outcome(UpdateOutcome.Rejected, v, reason);
         if (!UpdatePackage.CheckFiles(dir, m, out reason)) return Outcome(UpdateOutcome.Rejected, v, reason);
+        if (repair) log($"réparation : fichiers de Mods/ différents du paquet {v}, réinstallés");
 
         var items = new List<Staged>();
         foreach (var f in m.Files)
@@ -62,7 +89,7 @@ public static class UpdateInstaller
         // fichier à son démarrage de toute façon).
         try { UpdateFiles.WriteInstalled(dataDir, m.Version); }
         catch (Exception e) { log($"installed.json non écrit : {e.Message}"); }
-        return Outcome(UpdateOutcome.Installed, v, null);
+        return Outcome(UpdateOutcome.Installed, v, repair ? "réparation" : null);
     }
 
     /// Copies « .new » à côté des cibles, revérifiées (une copie ratée ne doit rien remplacer).

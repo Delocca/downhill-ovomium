@@ -46,9 +46,9 @@ internal sealed class AutoUpdate
     /// Résultat laissé par le plugin au lancement (update-state.json), annoncé au menu puis effacé.
     private void ReportLastInstall()
     {
-        var s = UpdateFiles.ReadState(_dataDir);
+        var s = UpdateFiles.TakeState(_dataDir); // effacé à la lecture : annoncé une seule fois
         if (s == null) return;
-        if (s.Result == UpdateOutcome.Installed) _notices.Post($"Ovomium mis à jour en {s.Version}", Good);
+        if (s.Result == UpdateOutcome.Installed) _notices.Post(string.IsNullOrEmpty(s.Reason) ? $"Ovomium mis à jour en {s.Version}" : $"Ovomium {s.Version} réparé", Good);
         else
         {
             string what = s.Result == UpdateOutcome.Rejected ? "refusée" : "échouée";
@@ -57,7 +57,6 @@ internal sealed class AutoUpdate
             _notices.Post($"Mise à jour d'Ovomium{v} {what} : {GuiKit.Esc(s.Reason)}", Bad, 20000);
             Log.Warn($"mise à jour{v} {what} par le plugin : {s.Reason}");
         }
-        UpdateFiles.ClearState(_dataDir);
     }
 
     /// Plugin installé ? Sa version (constante UpdaterVersion), lue par réflexion : 0 si illisible.

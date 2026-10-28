@@ -120,6 +120,8 @@ test_refusals() { # vrais artefacts altérés ou rejoués : refusés, Mods/ inta
     tampered assets-badman ovomium-update.json
     reset_game; out=$(H mod "$GAME" "$(feed feed-badman "v$NEW:$W/assets-badman")")
     check 'grep -q "signature invalide" <<<"$out" && [[ ! -e "$DATA/update" ]]' 'mod : manifeste modifié d’un octet, refusé'
+    out=$(H mod "$GAME" "file://$W/feed-badman.json")
+    check 'grep -q "déjà refusée" <<<"$out"' 'mod : version refusée pas retéléchargée au lancement suivant'
     reset_game; stage "$W/assets-badman"; out=$(H plugin "$GAME")
     check 'grep -q "rejected.*signature invalide" <<<"$out" && state_is rejected && [[ -d "$DATA/update.rejected" ]] && mods_untouched "$W/game-old"' \
         'plugin : manifeste modifié d’un octet, refusé, quarantaine, Mods/ intact'
@@ -128,6 +130,8 @@ test_refusals() { # vrais artefacts altérés ou rejoués : refusés, Mods/ inta
     check 'grep -q "empreinte fausse pour Ovomium.dll" <<<"$out" && [[ ! -e "$DATA/update" ]]' 'mod : Ovomium.dll modifiée, refusée'
     reset_game; stage "$W/assets-baddll"; out=$(H plugin "$GAME")
     check 'grep -q "rejected.*empreinte fausse" <<<"$out" && state_is rejected && mods_untouched "$W/game-old"' 'plugin : Ovomium.dll modifiée, refusée, Mods/ intact'
+    out=$(H mod "$GAME" "$(feed feed "v$NEW:$W/assets")")
+    check 'grep -q "déjà refusée" <<<"$out" && [[ ! -e "$DATA/update" ]]' "mod : $NEW refusée par le plugin, pas retéléchargée"
     reset_game "$W/game-new"; stage "$W/assets-old"; out=$(H plugin "$GAME")
     check 'grep -q "rejected $OLD.*pas plus récente" <<<"$out" && mods_untouched "$W/game-new"' "plugin : paquet $OLD signé rejoué sur $NEW, refusé"
     reset_game; stage "$W/assets-old"; out=$(H plugin "$GAME")
@@ -140,6 +144,7 @@ setup_repo
 dotnet build "$ROOT/tests/update-e2e/Harness" -nologo -v quiet -o "$W/harness" >"$W/harness.txt" 2>&1 || die "harnais : voir $W/harness.txt"
 install_old
 check '[[ $(mods_version) == "$OLD" && -f "$GAME/Plugins/OvomiumUpdater.dll" ]]' "jeu factice : Ovomium $OLD et plugin installés par install-linux.sh"
+check 'H plugin-hors-melonloader "$GAME" >"$W/raw.txt" 2>&1' 'plugin sans MelonLoader prêt (ni environnement, ni journal) : aucune exception ne sort'
 release_new
 check '[[ $RELEASE_CODE == 0 ]] && grep -q "\"version\":\"$NEW\"" "$W/assets/ovomium-update.json"' "release.sh --dry-run : $NEW emballée et signée (voir $W/release.txt)"
 test_update

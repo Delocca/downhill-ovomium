@@ -28,6 +28,9 @@ public static class UpdateFiles
     /// Version installée, écrite par le mod à chaque démarrage et par le plugin après installation ; ne sert que si
     /// Mods/Ovomium.dll est illisible (InstalledVersion lit d'abord la DLL elle-même).
     public const string InstalledFile = "installed.json";
+    /// Plus haute version refusée (par le mod ou par le plugin) : le mod ne la retélécharge pas, ni rien en dessous,
+    /// tant qu'aucune version plus récente n'est publiée.
+    public const string SkipFile = "update-skip.json";
 
     /// Version du paquet prêt dans update/ (vérifié au téléchargement, revérifié par le plugin), ou null.
     public static ModVersion? ReadyVersion(string dataDir)
@@ -38,16 +41,39 @@ public static class UpdateFiles
         catch (IOException) { return null; }
     }
 
-    public static ModVersion? ReadInstalled(string dataDir)
+    public static ModVersion? ReadInstalled(string dataDir) => ReadVersion(Path.Combine(dataDir, InstalledFile));
+
+    public static void WriteInstalled(string dataDir, ModVersion v) => WriteVersion(Path.Combine(dataDir, InstalledFile), v);
+
+    public static ModVersion? ReadSkipped(string dataDir) => ReadVersion(Path.Combine(dataDir, SkipFile));
+
+    /// Note `v` comme refusée (garde la plus haute des versions refusées).
+    public static void Skip(string dataDir, ModVersion v)
     {
-        var doc = ReadJson(Path.Combine(dataDir, InstalledFile));
+        var old = ReadSkipped(dataDir);
+        if (old == null || v > old.Value) WriteVersion(Path.Combine(dataDir, SkipFile), v);
+    }
+
+    private static ModVersion? ReadVersion(string path)
+    {
+        var doc = ReadJson(path);
         if (doc == null) return null;
         using (doc)
             return ModVersion.TryParse(Str(doc.RootElement, "version"), out var v) ? v : null;
     }
 
-    public static void WriteInstalled(string dataDir, ModVersion v) =>
-        WriteJson(Path.Combine(dataDir, InstalledFile), w => w.WriteString("version", v.ToString()));
+    private static void WriteVersion(string path, ModVersion v) => WriteJson(path, w => w.WriteString("version", v.ToString()));
+
+    /// Résultat laissé par le plugin, effacé à la lecture : chaque résultat n'est annoncé qu'une fois. null si aucun
+    /// (ou s'il n'a pas pu être effacé : mieux vaut ne rien annoncer que l'annoncer à chaque lancement).
+    public static UpdateOutcome TakeState(string dataDir)
+    {
+        var s = ReadState(dataDir);
+        if (s == null) return null;
+        try { ClearState(dataDir); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+        return s;
+    }
 
     public static UpdateOutcome ReadState(string dataDir)
     {

@@ -25,13 +25,14 @@ public sealed class InstallerTests : IDisposable
     public void Dispose() { try { Directory.Delete(_root, true); } catch (IOException) { } }
 
     /// Paquet signé dans update/ : fichiers donnés (nom → contenu), empreintes calculées sauf `badHash`.
-    private void Prepare(string version, int minUpdater = 1, string badHash = null, params (string name, string content)[] files)
+    /// Ovomium.dll : fausse DLL de MelonInfo `dllVersion` (par défaut celle du paquet), étiquetée par le contenu.
+    private void Prepare(string version, int minUpdater = 1, string badHash = null, string dllVersion = null, params (string name, string content)[] files)
     {
         Directory.CreateDirectory(UpdateDir);
         var entries = new List<string>();
         foreach (var (name, content) in files)
         {
-            var bytes = Encoding.UTF8.GetBytes(content);
+            var bytes = PackageBytes(name, content, dllVersion ?? version);
             File.WriteAllBytes(Path.Combine(UpdateDir, name), bytes);
             string sha = name == badHash ? new string('0', 64) : Sha2.Sha256Hex(bytes);
             entries.Add($"{{\"name\":\"{name}\",\"dest\":\"Mods\",\"sha256\":\"{sha}\"}}");
@@ -45,7 +46,10 @@ public sealed class InstallerTests : IDisposable
 
     private UpdateOutcome Run(int updaterVersion = 1) => UpdateInstaller.Run(DataDir, ModsDir, updaterVersion, _signer.PublicKey, _log.Add);
 
-    private string Mod(string name) => File.ReadAllText(Path.Combine(ModsDir, name));
+    private static byte[] PackageBytes(string name, string content, string version) =>
+        name == "Ovomium.dll" ? FakeMelonDll.Bytes(version, content) : Encoding.UTF8.GetBytes(content);
+
+    private string Mod(string name) => FakeMelonDll.Label(Path.Combine(ModsDir, name));
 
     /// Refus : Mods/ intact, paquet en quarantaine, état écrit.
     private void AssertUntouched(UpdateOutcome o, string result, string reasonPart)
@@ -116,13 +120,103 @@ public sealed class InstallerTests : IDisposable
         AssertUntouched(Run(), UpdateOutcome.Rejected, "empreinte fausse pour Ovomium.dll");
     }
 
-    [Theory]
-    [InlineData("0.4.0")]
-    [InlineData("0.3.9")]
-    public void RetourArriere_Refuse(string version)
+    [Fact]
+    public void RetourArriere_Refuse()
     {
-        Prepare(version, files: TwoFiles);
+        Prepare("0.3.9", files: TwoFiles);
         AssertUntouched(Run(), UpdateOutcome.Rejected, "pas plus récente");
+    }
+
+    /// Mods/ en 0.4.0 « authentique » : mêmes fichiers que le paquet 0.4.0 de `camera`.
+    private void Install040(string camera)
+    {
+        File.WriteAllBytes(Path.Combine(ModsDir, "Ovomium.dll"), FakeMelonDll.Bytes("0.4.0", "mod 0.4.0"));
+        File.WriteAllText(Path.Combine(ModsDir, "LMD-Camera.dll"), camera);
+    }
+
+    [Fact]
+    public void MemeVersion_FichiersIdentiques_Refusee()
+    {
+        Install040("caméra 0.4.0");
+        Prepare("0.4.0", files: new[] { ("Ovomium.dll", "mod 0.4.0"), ("LMD-Camera.dll", "caméra 0.4.0") });
+        var o = Run();
+        Assert.Equal(UpdateOutcome.Rejected, o.Result);
+        Assert.Contains("pas plus récente", o.Reason);
+    }
+
+    [Fact]
+    public void MemeVersion_FichierDifferent_Reparee()
+    {
+        Install040("caméra abîmée");
+        Prepare("0.4.0", files: new[] { ("Ovomium.dll", "mod 0.4.0"), ("LMD-Camera.dll", "caméra 0.4.0") });
+        var o = Run();
+        Assert.Equal((UpdateOutcome.Installed, "0.4.0", "réparation"), (o.Result, o.Version, o.Reason));
+        Assert.Equal("caméra 0.4.0", Mod("LMD-Camera.dll"));
+    }
+
+    [Fact]
+    public void ArretPendantLeRemplacement_AncienRemisPuisReinstalle()
+    {
+        // Arrêt brutal après « Ovomium.dll → .old, .new → Ovomium.dll » et « LMD-Camera.dll → .old », avant que la
+        // nouvelle caméra soit en place. Le paquet est encore dans update/.
+        Prepare("0.5.0", files: TwoFiles);
+        File.Move(Path.Combine(ModsDir, "Ovomium.dll"), Path.Combine(ModsDir, "Ovomium.dll.old"));
+        File.Copy(Path.Combine(UpdateDir, "Ovomium.dll"), Path.Combine(ModsDir, "Ovomium.dll"));
+        File.Move(Path.Combine(ModsDir, "LMD-Camera.dll"), Path.Combine(ModsDir, "LMD-Camera.dll.old"));
+        var o = Run(); // caméra remise, puis réparation : la DLL se dit déjà 0.5.0
+        Assert.Equal((UpdateOutcome.Installed, "réparation"), (o.Result, o.Reason));
+        Assert.Equal("nouveau mod", Mod("Ovomium.dll"));
+        Assert.Equal("nouvelle caméra", Mod("LMD-Camera.dll"));
+        Assert.Equal(new[] { "LMD-Camera.dll", "Ovomium.dll" }, Directory.GetFiles(ModsDir).Select(Path.GetFileName).Order());
+    }
+
+    [Fact]
+    public void SansPaquet_SauvegardeOrphelineRemiseEnPlace()
+    {
+        File.Move(Path.Combine(ModsDir, "Ovomium.dll"), Path.Combine(ModsDir, "Ovomium.dll.old"));
+        File.WriteAllText(Path.Combine(ModsDir, "LMD-Camera.dll.old"), "sauvegarde périmée"); // cible présente : gardée telle quelle
+        Assert.Null(Run());
+        Assert.Equal("ancien mod", Mod("Ovomium.dll"));
+        Assert.Equal("ancienne caméra", Mod("LMD-Camera.dll"));
+        Assert.Contains(_log, l => l.Contains("Ovomium.dll remis en place"));
+    }
+
+    [Fact]
+    public void DllQuiNeSeDitPasDeLaVersionDuPaquet_Refusee()
+    {
+        // release.sh --no-build après un changement de version sans recompiler : installée, la DLL se dirait 0.4.9 et
+        // le mod retéléchargerait 0.5.0 à chaque lancement.
+        Prepare("0.5.0", dllVersion: "0.4.9", files: TwoFiles);
+        AssertUntouched(Run(), UpdateOutcome.Rejected, "Ovomium.dll se déclare 0.4.9 au lieu de 0.5.0");
+        Assert.Equal(new ModVersion(0, 5, 0), UpdateFiles.ReadSkipped(DataDir));
+    }
+
+    [Fact]
+    public void SansOvomiumDll_Refuse()
+    {
+        Prepare("0.5.0", files: ("LMD-Camera.dll", "nouvelle caméra"));
+        AssertUntouched(Run(), UpdateOutcome.Rejected, "Ovomium.dll absent du manifeste");
+    }
+
+    [Fact]
+    public void Refus_VersionNotee_MemeSansSignatureValide()
+    {
+        Prepare("0.5.0", files: TwoFiles);
+        var path = Path.Combine(UpdateDir, UpdatePackage.ManifestName);
+        File.WriteAllText(path, File.ReadAllText(path).Replace("0.5.0", "0.6.0"));
+        Run();
+        Assert.Equal(new ModVersion(0, 6, 0), UpdateFiles.ReadSkipped(DataDir));
+        UpdateFiles.Skip(DataDir, new ModVersion(0, 5, 5)); // plus ancienne : la plus haute reste
+        Assert.Equal(new ModVersion(0, 6, 0), UpdateFiles.ReadSkipped(DataDir));
+    }
+
+    [Fact]
+    public void EtatLuUneSeuleFois()
+    {
+        Prepare("0.3.9", files: TwoFiles);
+        Run();
+        Assert.Equal(UpdateOutcome.Rejected, UpdateFiles.TakeState(DataDir).Result);
+        Assert.Null(UpdateFiles.TakeState(DataDir));
     }
 
     [Fact]
@@ -191,7 +285,7 @@ public sealed class InstallerTests : IDisposable
     public void QuarantainePrecedente_Remplacee()
     {
         Directory.CreateDirectory(Path.Combine(DataDir, UpdateFiles.QuarantineDir, "vieux"));
-        Prepare("0.4.0", files: TwoFiles);
+        Prepare("0.3.9", files: TwoFiles);
         AssertUntouched(Run(), UpdateOutcome.Rejected, "pas plus récente");
         Assert.False(Directory.Exists(Path.Combine(DataDir, UpdateFiles.QuarantineDir, "vieux")));
     }

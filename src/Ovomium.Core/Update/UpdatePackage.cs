@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Ovomium.Core.Update;
 
@@ -30,7 +31,8 @@ public static class UpdatePackage
         return UpdateManifest.Parse(json, out reason);
     }
 
-    /// Chaque fichier listé est présent dans `dir` avec la bonne empreinte.
+    /// Chaque fichier listé est présent dans `dir` avec la bonne empreinte, et Ovomium.dll déclare la version du
+    /// manifeste (CheckModDll).
     public static bool CheckFiles(string dir, UpdateManifest m, out string reason)
     {
         foreach (var f in m.Files)
@@ -39,18 +41,34 @@ public static class UpdatePackage
             if (!File.Exists(path)) { reason = $"{f.Name} absent"; return false; }
             if (!HasHash(path, f.Sha256)) { reason = $"empreinte fausse pour {f.Name}"; return false; }
         }
+        return CheckModDll(dir, m, out reason);
+    }
+
+    /// Ovomium.dll fait partie du paquet et son MelonInfo annonce la version du manifeste. Sinon, une fois
+    /// installée, elle se dirait plus ancienne et chaque lancement retéléchargerait la même mise à jour.
+    public static bool CheckModDll(string dir, UpdateManifest m, out string reason)
+    {
         reason = null;
-        return true;
+        var mod = m.Files.FirstOrDefault(f => string.Equals(f.Name, InstalledVersion.ModFile, StringComparison.OrdinalIgnoreCase));
+        if (mod == null) { reason = $"{InstalledVersion.ModFile} absent du manifeste"; return false; }
+        var declared = InstalledVersion.FromMelonDll(Path.Combine(dir, mod.Name));
+        if (declared != m.Version)
+            reason = $"{InstalledVersion.ModFile} se déclare {declared?.ToString() ?? "sans version lisible"} au lieu de {m.Version}";
+        return reason == null;
     }
 
     public static bool HasHash(string path, string sha256) => Sha2.Sha256Hex(File.ReadAllBytes(path)) == sha256;
 
-    /// Version strictement plus récente que celle installée (pas de retour arrière, pas de réinstallation),
-    /// et plugin assez récent pour ce paquet.
-    public static bool CheckVersions(UpdateManifest m, ModVersion installed, int updaterVersion, out string reason)
+    /// Une cible de Mods/ manque ou diffère du paquet ?
+    public static bool DiffersFrom(string modsDir, UpdateManifest m) =>
+        m.Files.Any(f => { string p = Path.Combine(modsDir, f.Name); return !File.Exists(p) || !HasHash(p, f.Sha256); });
+
+    /// Version strictement plus récente que celle installée (pas de retour arrière), et plugin assez récent pour
+    /// ce paquet. `repair` : la même version est acceptée (réinstallation de fichiers de Mods/ abîmés).
+    public static bool CheckVersions(UpdateManifest m, ModVersion installed, int updaterVersion, out string reason, bool repair = false)
     {
         reason = null;
-        if (!(m.Version > installed)) reason = $"version {m.Version} pas plus récente que {installed}";
+        if (!(m.Version > installed || (repair && m.Version == installed))) reason = $"version {m.Version} pas plus récente que {installed}";
         else if (m.MinUpdater > updaterVersion) reason = $"plugin de mise à jour trop ancien ({updaterVersion} < {m.MinUpdater}) : relancer l'installeur";
         return reason == null;
     }

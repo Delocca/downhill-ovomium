@@ -51,6 +51,24 @@ read_version() {
     ZIP="dist/downhill-ovomium-$VERSION.zip"
 }
 
+# Plus haut tag vX.Y.Z, local et (vraie publication) sur GitHub, comparé numériquement : 0.10.0 > 0.9.0.
+latest_tag() {
+    { git tag -l 'v*'
+      if [[ -z "$DRY_RUN" ]] && git remote get-url origin >/dev/null 2>&1; then
+          git ls-remote --tags origin 'v*' | sed -e 's#.*refs/tags/##' -e 's/\^{}$//'
+      fi; } | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -n 1
+}
+
+check_newer() { # la version publiée doit dépasser toutes les précédentes : le mod ne prend que plus récent
+    local last newest
+    last=$(latest_tag || true) # aucun tag : grep échoue
+    [[ -z "$last" ]] && return 0
+    newest=$(printf '%s\n' "${last#v}" "$VERSION" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)
+    [[ "$newest" == "$VERSION" && "${last#v}" != "$VERSION" ]] ||
+        die "version $VERSION pas plus récente que le dernier tag $last : augmente-la dans src/Ovomium/OvomiumMod.cs."
+    say "  OK : $VERSION > dernier tag $last"
+}
+
 check_git() {
     step "Vérifications"
     if [[ -n "$(git status --porcelain)" ]]; then
@@ -59,6 +77,7 @@ check_git() {
     fi
     git rev-parse -q --verify "refs/tags/$TAG" >/dev/null &&
         die "le tag $TAG existe déjà : augmente la version dans src/Ovomium/OvomiumMod.cs."
+    check_newer
     if ! git remote get-url origin >/dev/null 2>&1; then
         blocker "pas de remote origin : crée d'abord le dépôt $GITHUB_REPO (voir docs/distribution.md)."
     elif [[ -z "$DRY_RUN" ]]; then
@@ -84,10 +103,14 @@ public_pem() {
 check_key() {
     step "Clé de signature"
     [[ -f "$KEY" ]] || die "clé privée introuvable : $KEY (restaure ta sauvegarde, voir docs/distribution.md)."
-    openssl pkey -in "$KEY" -noout -text 2>/dev/null | head -n1 | grep -q '^ED25519 Private-Key' ||
-        die "$KEY n'est pas une clé privée Ed25519 lisible."
+    # Clé publique dérivée (DER : en-tête Ed25519 fixe de 12 octets + 32 octets). Lue en entier par python : pas de
+    # pipe coupé en route (SIGPIPE sous pipefail), et rien de la clé privée n'est affiché.
     local derived
-    derived=$(openssl pkey -in "$KEY" -pubout -outform DER | tail -c 32 | base64 -w0)
+    derived=$(openssl pkey -in "$KEY" -pubout -outform DER 2>/dev/null | python3 -I -c '
+import base64, sys
+d = sys.stdin.buffer.read()
+if len(d) != 44 or not d.startswith(bytes.fromhex("302a300506032b6570032100")): sys.exit(1)
+print(base64.b64encode(d[12:]).decode())') || die "$KEY n'est pas une clé privée Ed25519 lisible."
     [[ "$derived" == "$PUBLIC_KEY" ]] ||
         die "la clé $KEY ne correspond pas à la clé publique du mod ($PUBLIC_KEY) : mauvaise clé ?"
     say "  OK : la clé privée correspond à la clé publique du mod"
@@ -118,6 +141,13 @@ build_package() {
     for f in "$ZIP" "$MANIFEST" dist/Ovomium.dll dist/LMD-Camera.dll; do [[ -f "$f" ]] || die "fichier absent : $f"; done
     python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1],"rb"))["version"]; sys.exit(v!=sys.argv[2])' \
         "$MANIFEST" "$VERSION" || die "$MANIFEST n'annonce pas la version $VERSION."
+    # Déjà vérifié par make-dist sur la DLL compilée ; revérifié sur celle qui sera signée et publiée.
+    dotnet build tools/MelonVersion -c Release -nologo -v quiet -o "$TMP/melon-version" >"$TMP/melon-version.log" 2>&1 ||
+        die "tools/MelonVersion ne compile pas ($(tail -n 3 "$TMP/melon-version.log"))"
+    local declared
+    declared=$(dotnet "$TMP/melon-version/MelonVersion.dll" dist/Ovomium.dll) || die "MelonInfo de dist/Ovomium.dll illisible."
+    [[ "$declared" == "$VERSION" ]] || die "dist/Ovomium.dll se déclare $declared, pas $VERSION : recompile (sans --no-build)."
+    say "  OK : dist/Ovomium.dll se déclare $VERSION"
 }
 
 sign_manifest() {

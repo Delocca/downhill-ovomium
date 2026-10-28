@@ -7,7 +7,7 @@ $script:UpdaterPending = @('update', 'update.tmp')
 # Tout l'état du plugin (Core/Update/UpdateFiles.cs ; « .tmp » : écriture interrompue). Les enregistrements
 # (UserData\Ovomium\recordings\) restent.
 $script:UpdaterState = @('update', 'update.tmp', 'update.rejected', 'update-state.json', 'update-state.json.tmp',
-    'installed.json', 'installed.json.tmp')
+    'installed.json', 'installed.json.tmp', 'update-skip.json', 'update-skip.json.tmp')
 
 function Get-UpdaterStateDir([string]$GameDir) {
     return Join-Path (Join-Path $GameDir 'UserData') 'Ovomium'

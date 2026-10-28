@@ -25,11 +25,11 @@ public sealed class DownloaderTests : IDisposable
 
     /// Release vX.Y.Z publiée : ses fichiers dans un dossier, listés (file://) dans releases.json avec une
     /// version plus ancienne et un brouillon. `tamper` modifie un fichier après signature.
-    private void Publish(string version, int minUpdater = 1, Action<string> tamper = null)
+    private void Publish(string version, int minUpdater = 1, Action<string> tamper = null, string dllVersion = null)
     {
         string dir = Path.Combine(_root, "rel-" + version);
         Directory.CreateDirectory(dir);
-        var dll = Encoding.UTF8.GetBytes("mod " + version);
+        var dll = FakeMelonDll.Bytes(dllVersion ?? version, "mod " + version);
         File.WriteAllBytes(Path.Combine(dir, "Ovomium.dll"), dll);
         var json = Encoding.UTF8.GetBytes($"{{\"version\":\"{version}\",\"minUpdater\":{minUpdater},\"files\":[{{\"name\":\"Ovomium.dll\",\"dest\":\"Mods\",\"sha256\":\"{Sha2.Sha256Hex(dll)}\"}}]}}");
         File.WriteAllBytes(Path.Combine(dir, UpdatePackage.ManifestName), json);
@@ -66,7 +66,7 @@ public sealed class DownloaderTests : IDisposable
 
         var o = UpdateInstaller.Run(DataDir, ModsDir, 1, _signer.PublicKey, _ => { });
         Assert.Equal(UpdateOutcome.Installed, o.Result);
-        Assert.Equal("mod 0.5.0", File.ReadAllText(Path.Combine(ModsDir, "Ovomium.dll")));
+        Assert.Equal("mod 0.5.0", FakeMelonDll.Label(Path.Combine(ModsDir, "Ovomium.dll")));
         Assert.Null(UpdateFiles.ReadyVersion(DataDir));
     }
 
@@ -125,6 +125,68 @@ public sealed class DownloaderTests : IDisposable
         var m = Assert.Single(Check());
         Assert.Contains("empreinte fausse", m.Text);
         Assert.Null(UpdateFiles.ReadyVersion(DataDir));
+    }
+
+    [Fact]
+    public void DllQuiNeSeDitPasDeLaVersion_RefuseeEtPasRetelechargee()
+    {
+        Publish("0.5.0", dllVersion: "0.4.0");
+        var m = Assert.Single(Check());
+        Assert.Contains("se déclare 0.4.0 au lieu de 0.5.0", m.Text);
+        Assert.Null(UpdateFiles.ReadyVersion(DataDir));
+        Assert.Equal(new ModVersion(0, 5, 0), UpdateFiles.ReadSkipped(DataDir));
+        var again = Assert.Single(Check()); // lancement suivant : rien de téléchargé
+        Assert.Equal(UpdateDownloader.Kind.Log, again.Kind);
+        Assert.Contains("déjà refusée", again.Text);
+    }
+
+    [Fact]
+    public void RefuseeParLePlugin_PasRetelechargeeJusquALaSuivante()
+    {
+        UpdateFiles.Skip(DataDir, new ModVersion(0, 5, 0)); // noté par le plugin (update.rejected/)
+        Publish("0.5.0");
+        Assert.Contains("déjà refusée", Assert.Single(Check()).Text);
+        Assert.Null(UpdateFiles.ReadyVersion(DataDir));
+        Publish("0.5.1");
+        Assert.Contains(Check(), x => x.Kind == UpdateDownloader.Kind.Ready && x.Text == "0.5.1");
+    }
+
+    [Theory]
+    [InlineData("https://evil.example/Ovomium.dll", "hors de GitHub")]
+    [InlineData("http://github.com/x/Ovomium.dll", "https seulement")]
+    [InlineData("file://serveur/partage/Ovomium.dll", "file:// refusé")]
+    [InlineData("file:///tmp/Ovomium.dll", "file:// refusé")]
+    public void AdresseDeFichierHorsGitHub_Refusee(string url, string reason)
+    {
+        Assert.Contains(reason, Fetch.Refusal(new Uri(url), FetchSource.GitHubAsset));
+    }
+
+    [Theory]
+    [InlineData("https://github.com/Delocca/downhill-ovomium/releases/download/v0.5.0/Ovomium.dll")]
+    [InlineData("https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sig=x")]
+    [InlineData("https://objects.githubusercontent.com/github-production-release-asset-2e65be/1/2")]
+    public void AdresseGitHub_Acceptee(string url) => Assert.Null(Fetch.Refusal(new Uri(url), FetchSource.GitHubAsset));
+
+    [Fact]
+    public void ListeLocale_FichiersLocauxSeulement()
+    {
+        Assert.Null(Fetch.Refusal(new Uri("file:///tmp/Ovomium.dll"), FetchSource.LocalAsset));
+        Assert.NotNull(Fetch.Refusal(new Uri("file://serveur/partage/Ovomium.dll"), FetchSource.LocalAsset));
+        Assert.NotNull(Fetch.Refusal(new Uri("https://github.com/x"), FetchSource.LocalAsset));
+        Assert.NotNull(Fetch.Refusal(new Uri("file://serveur/partage/releases.json"), FetchSource.Feed));
+    }
+
+    [Fact]
+    public void ListeEnLigne_FichierEnFile_Refuse()
+    {
+        // Liste servie en https, fichiers en file:// : refusés avant toute lecture (le flux, lui, est en file:// ici,
+        // donc le test passe par Fetch directement avec la source qu'aurait la liste en ligne).
+        using var f = new Fetch("Ovomium-tests");
+        string local = Path.Combine(_root, "x.dll");
+        File.WriteAllText(local, "x");
+        var e = Assert.Throws<InvalidOperationException>(() => f.Bytes(new Uri(local).AbsoluteUri, 100, TimeSpan.FromSeconds(1), FetchSource.GitHubAsset));
+        Assert.Contains("file:// refusé", e.Message);
+        Assert.Throws<InvalidOperationException>(() => f.Bytes("https://evil.example/x", 100, TimeSpan.FromSeconds(1), FetchSource.GitHubAsset));
     }
 
     [Fact]

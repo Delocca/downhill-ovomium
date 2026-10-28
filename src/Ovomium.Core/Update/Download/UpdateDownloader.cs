@@ -31,6 +31,7 @@ public sealed class UpdateDownloader
     private readonly int? _pluginVersion;
     private readonly byte[] _key;
     private readonly Fetch _fetch;
+    private readonly FetchSource _assetSource;
 
     public UpdateDownloader(Options o)
     {
@@ -40,6 +41,8 @@ public sealed class UpdateDownloader
         _pluginVersion = o.PluginVersion;
         _key = o.PublicKey;
         _fetch = new Fetch(o.UserAgent);
+        // Fichiers locaux seulement si la liste l'est elle-même (tests) ; sinon https vers GitHub.
+        _assetSource = Uri.TryCreate(o.ApiUrl, UriKind.Absolute, out var api) && api.IsFile ? FetchSource.LocalAsset : FetchSource.GitHubAsset;
     }
 
     /// Toute la recherche, d'un bloc (bloquant : à lancer sur un fil à part dans le jeu).
@@ -60,7 +63,7 @@ public sealed class UpdateDownloader
     {
         string json;
         // Dépôt privé la plupart du temps : 404 (ou pas de réseau) = rien à faire, on réessaiera au prochain lancement.
-        try { json = Encoding.UTF8.GetString(_fetch.Bytes(_apiUrl, MaxApiBytes, ApiTimeout, "application/vnd.github+json")); }
+        try { json = Encoding.UTF8.GetString(_fetch.Bytes(_apiUrl, MaxApiBytes, ApiTimeout, FetchSource.Feed, "application/vnd.github+json")); }
         catch (Exception e) { Say(Kind.Log, $"mise à jour : releases inaccessibles ({e.Message})"); return; }
         var releases = ReleaseFeed.Parse(json);
         var target = ReleaseFeed.Newest(releases, _current);
@@ -71,8 +74,23 @@ public sealed class UpdateDownloader
             Say(Kind.NeedInstaller, $"Ovomium {v} est sorti : relance l'installeur d'Ovomium pour l'avoir (mise à jour automatique absente de cette installation)");
             return;
         }
+        var skipped = UpdateFiles.ReadSkipped(_dataDir);
+        if (skipped != null && !(target.Version > skipped.Value))
+        {
+            Say(Kind.Log, $"mise à jour : {v} déjà refusée (voir {UpdateFiles.QuarantineDir}/ et le journal), en attente d'une version plus récente que {skipped}");
+            return;
+        }
         if (UpdateFiles.ReadyVersion(_dataDir) == target.Version) { Say(Kind.Log, $"mise à jour : {v} déjà prête, en attente d'un redémarrage"); return; }
         if (Prepare(target)) Say(Kind.Ready, v, ReleaseFeed.Notes(releases, _current, target.Version));
+    }
+
+    /// Release refusée : dite au journal et notée (update-skip.json), pour ne pas la retélécharger à chaque lancement.
+    private bool Refuse(ModVersion v, string reason)
+    {
+        Say(Kind.Warn, $"mise à jour {v} refusée : {reason}");
+        try { UpdateFiles.Skip(_dataDir, v); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Say(Kind.Warn, $"{UpdateFiles.SkipFile} non écrit : {e.Message}"); }
+        return false;
     }
 
     /// Télécharge et vérifie la release dans update.tmp/, puis la met en place dans update/. Faux si refusée.
@@ -83,16 +101,16 @@ public sealed class UpdateDownloader
         Directory.CreateDirectory(tmp);
         if (!Download(r, UpdatePackage.ManifestName, tmp, 64 * 1024) || !Download(r, UpdatePackage.SignatureName, tmp, 64)) return false;
         var m = UpdatePackage.ReadSigned(tmp, _key, out string reason);
-        if (m == null) { Say(Kind.Warn, $"mise à jour {v} refusée : {reason}"); return false; }
-        if (m.Version != r.Version) { Say(Kind.Warn, $"mise à jour {v} refusée : le manifeste annonce {m.Version}"); return false; }
+        if (m == null) return Refuse(r.Version, reason);
+        if (m.Version != r.Version) return Refuse(r.Version, $"le manifeste annonce {m.Version}");
         if (!UpdatePackage.CheckVersions(m, _current, _pluginVersion.Value, out reason))
         {
-            if (m.MinUpdater > _pluginVersion.Value) Say(Kind.NeedInstaller, $"Ovomium {v} est sorti : relance l'installeur d'Ovomium pour cette version");
-            else Say(Kind.Warn, $"mise à jour {v} refusée : {reason}");
+            if (m.MinUpdater <= _pluginVersion.Value) return Refuse(r.Version, reason);
+            Say(Kind.NeedInstaller, $"Ovomium {v} est sorti : relance l'installeur d'Ovomium pour cette version");
             return false;
         }
         if (m.Files.Any(f => !Download(r, f.Name, tmp, MaxFileBytes))) return false;
-        if (!UpdatePackage.CheckFiles(tmp, m, out reason)) { Say(Kind.Warn, $"mise à jour {v} refusée : {reason}"); return false; }
+        if (!UpdatePackage.CheckFiles(tmp, m, out reason)) return Refuse(r.Version, reason);
         string ready = Path.Combine(_dataDir, UpdateFiles.ReadyDir);
         TryDeleteDir(ready); // paquet plus ancien jamais installé
         Directory.Move(tmp, ready);
@@ -102,8 +120,8 @@ public sealed class UpdateDownloader
 
     private bool Download(ReleaseInfo r, string name, string dir, long maxBytes)
     {
-        if (!r.Assets.TryGetValue(name, out var url)) { Say(Kind.Warn, $"mise à jour {r.Version} : fichier {name} absent de la release"); return false; }
-        File.WriteAllBytes(Path.Combine(dir, name), _fetch.Bytes(url, maxBytes, FileTimeout));
+        if (!r.Assets.TryGetValue(name, out var url)) return Refuse(r.Version, $"fichier {name} absent de la release");
+        File.WriteAllBytes(Path.Combine(dir, name), _fetch.Bytes(url, maxBytes, FileTimeout, _assetSource));
         return true;
     }
 

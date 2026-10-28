@@ -147,6 +147,7 @@ function Test-Uninstall($Installed) {
     Write-Text (P $e.Game 'UserData/Ovomium/update/Ovomium.dll') 'en attente'
     Write-Text (P $e.Game 'UserData/Ovomium/update.rejected/Ovomium.dll') 'refusée'
     Write-Text (P $e.Game 'UserData/Ovomium/installed.json.tmp') '{}'
+    Write-Text (P $e.Game 'UserData/Ovomium/update-skip.json') '{}'
     Write-Text (P $e.Game 'UserData/Ovomium/recordings/r.bin') 'x'
     $code = Invoke-Installer 'Uninstall.ps1' $e 'RetirerMelonLoader=Non'
     Check ($code -eq 0 -and -not (Test-Path (P $e.Game 'Mods/Ovomium.dll'))) 'désinstallation : DLL retirée'

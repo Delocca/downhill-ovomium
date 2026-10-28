@@ -58,7 +58,7 @@ check '[[ ! -e "$STATE/update" && ! -e "$STATE/update.tmp" && -f "$STATE/install
     'réinstallation : mise à jour en attente effacée, état gardé'
 
 echo '{}' >"$STATE/update-state.json" && mkdir -p "$STATE/update" "$STATE/update.tmp" "$STATE/update.rejected" "$STATE/recordings"
-echo '{}' >"$STATE/installed.json.tmp" && echo x >"$STATE/recordings/r.bin"
+echo '{}' >"$STATE/installed.json.tmp" && echo '{}' >"$STATE/update-skip.json" && echo x >"$STATE/recordings/r.bin"
 OVOMIUM_ANSWER=n run uninstall
 check '[[ ! -e "$GAME/Mods/Ovomium.dll" && -e "$GAME/version.dll" && $(count_override) == 1 ]]' 'désinstallation + n : MelonLoader et override gardés'
 check '[[ ! -e "$GAME/Mods/$CAM" ]]' 'désinstallation : LMD-Camera livré retiré'
