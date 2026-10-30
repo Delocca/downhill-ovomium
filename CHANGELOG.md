@@ -2,6 +2,8 @@
 
 ## Non publié
 
+## 0.5.1 — 2026-10-30
+
 - Corrigé : les fantômes des joueurs qui n'ont jamais changé de tenue (tenue de base) prenaient votre propre tenue et votre vélo. Ils ont maintenant la leur.
 - Un fantôme est reconstruit si son joueur change d'apparence.
 - Vue première et troisième personne : le flou de focale du jeu est coupé, l'image est nette ; il revient en vue normale. Pour le garder : `DepthOfFieldInCustomViews = true` dans `Ovomium.cfg`.
