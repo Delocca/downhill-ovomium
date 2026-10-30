@@ -17,7 +17,7 @@ namespace Ovomium;
 /// Tout ce qui touche à Unity tourne ici, dans le fil principal ; le réseau a son propre fil.
 public class OvomiumMod : MelonMod
 {
-    public const string Version = "0.5.0";
+    public const string Version = "0.5.1";
 
     private UdpNode _node;
     private RaceController _race;
