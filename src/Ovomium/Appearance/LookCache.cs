@@ -32,6 +32,9 @@ internal sealed class LookCache
     /// Vrai si le gabarit de cette apparence est attendu : la copie du vélo local n'est que provisoire.
     public bool IsPending(RiderLook look) => _queue.Contains(look);
 
+    /// Vrai si la construction de cette apparence a échoué sur cette piste.
+    public bool IsFailed(RiderLook look) => _failed.Contains(look);
+
     /// À chaque image : vide le cache au changement de piste, puis construit au plus une apparence.
     public void Tick(string track, GameObject localBike)
     {
@@ -43,7 +46,8 @@ internal sealed class LookCache
         catch (Exception e)
         {
             _failed.Add(look);
-            if (_reported.Add(look)) Log.Warn($"apparence impossible ({e.Message}) : copie du vélo local. {look}");
+            if (_reported.Add(look))
+                Log.Warn($"apparence impossible ({e.Message}) : copie du vélo local. {look} ; locale : {LocalLook.Read()}");
         }
     }
 

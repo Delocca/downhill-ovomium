@@ -14,7 +14,7 @@ Ovomium (anciennement LmdMulti) est un ensemble d'améliorations pour Lonely Mou
 | `src/Ovomium/` | Le mod : `OvomiumMod` (point d'entrée, relie tout), `Config` (MelonPreferences), `KeySetting` (touche réglable), `Log` |
 | `src/Ovomium/Game/` | Lecture de l'état du jeu : piste en cours, nom de piste, pseudo Steam |
 | `src/Ovomium/Ghosts/` | Capture de la pose locale (`PoseCapture`, `LocalSender`), marionnettes (`Puppet`, `GhostManager`), squelette (`BoneRig`), aspect et couleur des fantômes (`GhostLook`) |
-| `src/Ovomium/Appearance/` | Apparence de chaque joueur : lecture du profil local (`LocalLook`), construction d'un gabarit par la fabrique du jeu (`LookBuilder`, voir `game-api.md` § 3), cache par apparence vidé à chaque changement de piste, au plus une construction par image (`LookCache`). Les marionnettes copient le gabarit ; copie du vélo local en attendant, ou si l'apparence est inconnue de ce jeu |
+| `src/Ovomium/Appearance/` | Apparence de chaque joueur : lecture du profil local (`LocalLook`), construction d'un gabarit par la fabrique du jeu (`LookBuilder`, voir `game-api.md` § 3), cache par apparence vidé à chaque changement de piste, au plus une construction par image (`LookCache`). Les marionnettes copient le gabarit ; copie du vélo local en attendant, ou si l'apparence est inconnue de ce jeu (vélo inconnu, échec de la fabrique) ; une tenue inconnue est remplacée par celle que propose le jeu, comme il le fait lui-même. Un pair qui change d'apparence voit son fantôme reconstruit |
 | `src/Ovomium/Race/` | Course côté jeu : `RaceController` (session, commandes, réseau), `PadReader` (manette via Rewired), `RaceKeys` (noms des commandes à l'écran), `RaceRun` (ma participation : chargement, blocage au départ, sections, arrivée), `TrackLoader` (amener le joueur au départ d'une piste), `TrackAccess` (sélection, verrou de piste contourné), `RaceGame` (appels et patchs du jeu), `RaceHud` (affichage) |
 | `src/Ovomium/UI/` | OnGUI : panneau des joueurs, pseudos au-dessus des fantômes, notifications, avis de l'écran titre |
 | `src/Ovomium/Tweaks/` | Confort hors multijoueur : `IntroSkip` (démarrage direct au menu, `SkipIntro`), `KeyLayout` + `KeyboardRemap` (touches lettres du jeu adaptées à la disposition du clavier, `KeyboardLayout`) |
@@ -200,7 +200,7 @@ Images/s très bruitées d'une mesure à l'autre (les bots tournent sur le même
 
 ## Limites connues
 
-- Apparence des fantômes : celle de chaque joueur (v3), mais figée pour la piste en cours (une tenue changée sert au chargement suivant). Un contenu DLC que celui qui regarde ne possède pas n'a pas été testé : en cas d'échec, copie de son propre vélo.
+- Apparence des fantômes : celle de chaque joueur (v3), mais figée pour la piste en cours (une tenue changée sert au chargement suivant). Un contenu DLC que celui qui regarde ne possède pas n'a pas été testé : un vélo inconnu donne une copie de son propre vélo (choix d'Edia, 2026-10-30), une tenue inconnue celle que propose le jeu.
 - Translucide : sans écriture de profondeur, on voit un peu l'intérieur du modèle (bras derrière le corps…). Acceptable pour un fantôme.
 - Windows : l'installeur crée la règle de pare-feu (UAC) ; sans elle, au premier lancement, le pare-feu demande d'autoriser LMD sur le réseau (à accepter, au moins pour les réseaux privés), question souvent cachée sous le jeu plein écran (`docs/distribution.md`).
 - Non testé : vrai LAN à deux PC, Windows, Wi-Fi ; affichage au-delà de 1080p.

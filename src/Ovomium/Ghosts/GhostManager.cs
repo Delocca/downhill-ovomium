@@ -29,7 +29,16 @@ internal sealed class GhostManager
     public void OnPeer(PeerInfo info)
     {
         if (!info.IsCompatible) return;
-        if (_ghosts.TryGetValue(info.Id, out var g)) { g.Info = info; return; }
+        if (_ghosts.TryGetValue(info.Id, out var g))
+        {
+            if (info.Look != g.Info.Look)
+            {
+                Log.Info($"{info.Name} annonce {info.Look}");
+                if (g.Puppet != null) Hide(g); // recréée à l'image suivante avec la nouvelle apparence
+            }
+            g.Info = info;
+            return;
+        }
         // Historique gardé : retard d'affichage (jusqu'à quelques s en écho) + marge.
         _ghosts[info.Id] = new Ghost { Info = info, Buffer = new SnapshotBuffer(DelayMs(info) + 1500) };
     }
@@ -81,8 +90,13 @@ internal sealed class GhostManager
             g.Provisional = model == null && _looks.IsPending(g.Info.Look);
             g.Puppet = Puppet.Create(model ?? source, g.Info.Name, ColorOf(g), GhostLook.Parse(Config.GhostStyle.Value));
             if (g.Puppet == null) { g.RetryAtMs = nowMs + 5000; Log.Warn($"marionnette impossible pour {g.Info.Name}"); return false; }
-            string kind = model != null ? "son apparence" : g.Provisional ? "copie provisoire" : "copie du vélo local";
-            Log.Info($"fantôme créé : {g.Info.Name} ({g.Info.Track}, {kind})");
+            var look = g.Info.Look;
+            string kind = model != null ? "son apparence"
+                : g.Provisional ? "copie provisoire, gabarit en attente"
+                : !look.IsKnown ? "copie du vélo local, apparence inconnue"
+                : _looks.IsFailed(look) ? "copie du vélo local, apparence en échec"
+                : "copie du vélo local";
+            Log.Info($"fantôme créé : {g.Info.Name} ({g.Info.Track}, {kind}) {look}");
         }
         g.Puppet.Apply(g.Sampled);
         return true;

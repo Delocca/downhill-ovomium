@@ -31,6 +31,7 @@ public class OvomiumMod : MelonMod
     private readonly Tweaks.KeyboardRemap _keyboard = new();
     private string _myName = "?", _myTrack;
     private double _nextLocalRefresh;
+    private Core.Appearance.RiderLook? _myLook; // dernière apparence journalisée
     private readonly MenuNotices _menuNotices = new();
     private Update.AutoUpdate _update;
     private readonly System.Diagnostics.Stopwatch _cost = new(); // temps passé dans le mod (DebugLog)
@@ -137,7 +138,9 @@ public class OvomiumMod : MelonMod
             name = $"Joueur-{_node.Id % 10000:D4}";
         }
         _myName = name.Trim();
-        _node.SetLocal(_myName, steamId, track, track != null, Appearance.LocalLook.Read());
+        var look = Appearance.LocalLook.Read();
+        if (look != _myLook) { _myLook = look; Log.Info($"apparence locale : {look}"); }
+        _node.SetLocal(_myName, steamId, track, track != null, look);
     }
 
     private void DrainEvents()
@@ -167,6 +170,7 @@ public class OvomiumMod : MelonMod
     private void AnnounceArrival(PeerInfo p)
     {
         Log.Info($"pair détecté : {p.Name} {p.EndPoint} v{(p.IsCompatible ? Core.Protocol.ProtocolInfo.Version : p.IncompatibleVersion)} mod {p.ModVersion} piste={p.Track}");
+        if (p.IsCompatible) Log.Info($"{p.Name} annonce {p.Look}");
         if (!p.IsCompatible)
             _toasts.Show($"{p.Name} : version d'Ovomium incompatible, " + (_update.Ready ? "mise à jour prête : relance le jeu" : "mettez-vous à jour"),
                 new Color(1f, 0.45f, 0.45f));

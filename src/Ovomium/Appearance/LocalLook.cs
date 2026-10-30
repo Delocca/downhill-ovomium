@@ -7,6 +7,7 @@ namespace Ovomium.Appearance;
 internal static class LocalLook
 {
     private static bool _warned;
+    private static bool _absentLogged; // relâché à chaque lecture réussie : trace les allers-retours
 
     /// Apparence courante, ou inconnue (vélo 0) si le profil n'est pas encore chargé.
     public static RiderLook Read()
@@ -15,7 +16,12 @@ internal static class LocalLook
         {
             var gp = ObjectPublicOb1SePl1BoInInSePlUnique.field_Private_Static_ObjectPublicOb1SePl1BoInInSePlUnique_0?
                 .field_Private_Object1PublicStObBo1UIObBoObBoObUnique_1_PlayerProfileParameter_0?.field_Private_T_0?.GameProperties;
-            if (gp == null) return default;
+            if (gp == null)
+            {
+                if (!_absentLogged) { _absentLogged = true; Log.Info("apparence locale illisible : profil absent"); }
+                return default;
+            }
+            _absentLogged = false;
             int vhl = gp.ActiveVehicle;
             return new RiderLook(vhl, gp.Method_Public_Int32_Int32_0(vhl), gp.ActiveRiderSkinID,
                 gp.ActiveRiderSkinColor, gp.ActiveRiderHairColor, gp.ActiveRiderFacialHairColor,

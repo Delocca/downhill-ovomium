@@ -71,7 +71,9 @@ internal static class LookBuilder
         if (bike == null || bike.Count == 0) throw new ArgumentException($"variante {l.Variant} du vélo {l.Vehicle} inconnue");
         var rs = cfg.riderDB.Method_Public_RiderSkinConfiguration_Int32_Boolean_0(l.Skin, true)
                  ?? throw new ArgumentException($"tenue {l.Skin} inconnue");
-        if (rs.ID != l.Skin) throw new ArgumentException($"tenue {l.Skin} inconnue (le jeu propose {rs.ID})");
+        // Le jeu remplace lui-même une tenue inconnue (ex. 0, profil jamais personnalisé → 100, la tenue de base) :
+        // on fait comme lui plutôt que de copier le vélo local.
+        if (rs.ID != l.Skin) Log.Info($"tenue {l.Skin} remplacée par {rs.ID}, comme le fait le jeu");
         var rider = rs.Method_Public_List_1_ColorizedMesh_BodyType_HairType_FacialHairType_HelmetType_0(
             (BodyType)l.Body, (HairType)l.Hair, (FacialHairType)l.Beard, (HelmetType)l.Helmet);
         if (rider == null || rider.Count == 0) throw new ArgumentException($"tenue {l.Skin} sans maillage pour le corps {l.Body}");
