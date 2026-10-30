@@ -63,6 +63,9 @@ VUES À LA PREMIÈRE ET À LA TROISIÈME PERSONNE (mod LMD-Camera)
 En piste : touche V, ou clic du stick droit (R3) à la manette, pour changer de vue,
 dans cet ordre : vue normale → première personne → troisième personne → vue
 normale… Ce choix est mémorisé. Pas de changement de vue pendant une chute.
+En première et troisième personne, le flou de focale du jeu est coupé (image
+nette) ; il revient en vue normale. Pour le garder : DepthOfFieldInCustomViews =
+true dans <dossier du jeu>\UserData\Ovomium.cfg (jeu fermé).
 
 Touches du mod lui-même : 1 = première personne, 2 = vue normale,
 3 = troisième personne.

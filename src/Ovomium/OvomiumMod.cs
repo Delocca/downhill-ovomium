@@ -28,6 +28,7 @@ public class OvomiumMod : MelonMod
     private readonly Toasts _toasts = new();
     private readonly SessionTools _tools = new();
     private readonly View.CameraToggle _camera = new();
+    private readonly View.FocusBlurSwitch _focusBlur = new();
     private readonly Tweaks.KeyboardRemap _keyboard = new();
     private string _myName = "?", _myTrack;
     private double _nextLocalRefresh;
@@ -73,6 +74,8 @@ public class OvomiumMod : MelonMod
         Log.Try("touches", HandleKeys);
         Log.Try("touches de course", () => _race.HandleKeys(now, _myName));
         Log.Try("vue", () => _camera.Update(_myTrack != null, _toasts));
+        Log.Try("flou de focale", () => _focusBlur.Set(
+            Core.View.FocusBlur.ShouldSuppress(_camera.View, _camera.Vr, Config.DepthOfFieldInCustomViews.Value), _camera.View));
         Log.Try("clavier", () => _keyboard.Update(now));
         Log.Try("course", () => _race.Update(now)); // séparés : une touche en erreur ne fige pas la course
         // Capture et application dans Update : les contraintes Unity (cheveux, phares) suivent dans la même image.

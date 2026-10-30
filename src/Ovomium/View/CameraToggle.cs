@@ -19,6 +19,12 @@ internal sealed class CameraToggle
     /// Aide affichée dans le panneau (« V vue » ou « R3 vue »), vide sans LMD-Camera ou pendant la VR.
     public string Hint => _bridge == null || _vr ? "" : $" · {(RaceKeys.Pad ? "R3" : Config.CameraKey.Name)} vue";
 
+    /// Vue courante de LMD-Camera ("None" sans le mod ou hors piste), y compris celle qu'il restaure au lancement.
+    public string View => _bridge?.View ?? "None";
+
+    /// VR de LMD-VR démarrée (lue à chaque Update).
+    public bool Vr => _vr;
+
     public void Update(bool onTrack, Toasts toasts)
     {
         if (!_searched) { _searched = true; _bridge = LmdCameraBridge.Find(); }
