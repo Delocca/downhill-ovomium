@@ -73,7 +73,7 @@ Sans sudo, jeu fermé. Trouve le jeu (dossiers Steam natif, Flatpak, Snap ; `lib
 
 Les joueurs n'ont plus à réinstaller : au lancement du jeu, le plugin `OvomiumUpdater.dll` regarde la dernière release de `Delocca/downhill-ovomium`, télécharge `ovomium-update.json` et sa signature `ovomium-update.json.sig`, vérifie la signature (Ed25519, clé publique intégrée au mod) puis les SHA-256 des DLL, et installe la mise à jour ; le joueur relance le jeu quand le message le demande. Sans la bonne signature, rien n'est installé : seule la personne qui a la **clé privée** peut publier une mise à jour.
 
-Le dépôt GitHub reste **privé** la plupart du temps : tant qu'il l'est, le plugin ne voit pas les releases (réponse 404) et ne fait rien. On l'ouvre le temps que tout le monde se mette à jour, puis on le referme.
+Le dépôt GitHub reste **public** tant que le mod est en développement actif (choix d'Edia, 2026-11-08). S'il repasse **privé**, le plugin ne voit plus les releases (réponse 404) et ne fait rien : il faudrait alors l'ouvrir le temps que tout le monde se mette à jour.
 
 Toutes les commandes se lancent dans un terminal ouvert dans le dossier du projet (`lonely_moutain`), **hors du bac à sable de Claude** (elles ont besoin de `gh` et du réseau).
 
@@ -90,8 +90,8 @@ Toutes les commandes se lancent dans un terminal ouvert dans le dossier du proje
 3. **Commiter** tout (`git status` doit être propre).
 4. **Essai à blanc** : `tools/release.sh --dry-run`. Il fait tout, sauf ce qui laisse une trace : vérifications, notes, paquet (`make-dist`), signature vérifiée ; ni commit, ni tag, ni envoi. Lire les messages : chaque étape est annoncée, la première erreur arrête tout avec une explication.
 5. **Publier** : `tools/release.sh`. Il vérifie (arbre propre, remote `origin`, tag `v<version>` libre localement et sur GitHub, version strictement supérieure au plus haut tag `vX.Y.Z` local et distant (comparaison numérique : 0.10.0 > 0.9.0), `gh` connecté, dépôt et clé publique présents dans le code du mod, clé privée Ed25519 qui correspond), fabrique le paquet, revérifie que `dist/Ovomium.dll` se déclare bien de la version, signe `dist/ovomium-update.json` et vérifie la signature, date la section du changelog (`## 0.5.0 — <date>`, commit « Changelog 0.5.0 »), crée le tag annoté `v0.5.0`, pousse, puis crée la release avec `downhill-ovomium-<v>.zip`, `ovomium-update.json`, `ovomium-update.json.sig`, `Ovomium.dll` et `LMD-Camera.dll`. Notes à la main plutôt que le changelog : `tools/release.sh --notes "Texte"` ou `tools/release.sh notes.md`.
-6. **Ouvrir le dépôt** : `tools/repo-visibility.sh public` (le script de publication le rappelle à la fin). Prévenir les amis : lancer le jeu une fois, puis le relancer quand le message le demande.
-7. **Refermer le dépôt** quand tout le monde l'a eue : `tools/repo-visibility.sh private`. État actuel : `tools/repo-visibility.sh status`.
+6. **Prévenir les amis** : lancer le jeu une fois, puis le relancer quand le message le demande.
+7. **Seulement si le dépôt est privé** : l'ouvrir avant l'étape 6 (`tools/repo-visibility.sh public`), puis le refermer quand tout le monde a la mise à jour (`tools/repo-visibility.sh private`). État actuel : `tools/repo-visibility.sh status`.
 
 Un nouvel ami installe toujours avec le zip (lien de la release, à télécharger pendant que le dépôt est ouvert, ou envoyé directement) ; les mises à jour suivantes lui arrivent seules.
 
