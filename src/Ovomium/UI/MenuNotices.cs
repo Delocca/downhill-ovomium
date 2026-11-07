@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Ovomium.UI;
 
 /// Avis de l'écran titre (mise à jour, touches en conflit avec LMD-VR…), en cartes (NoticeCard) empilées dans le ciel
-/// libre à droite de la colonne du menu, sous la bannière d'actualité du jeu. Gardés jusqu'au menu principal
+/// libre à droite de la colonne du menu (MenuLayout), sous la bannière d'actualité du jeu et sous le panneau des joueurs. Gardés jusqu'au menu principal
 /// (affichés plus tôt, ils disparaîtraient pendant les logos) ; masqués en piste. Leur durée court dès leur première
 /// apparition, journalisée « [écran] » comme les notifications ; une carte qui n'a pas la place attend que les
 /// précédentes partent. Fil principal uniquement.
@@ -31,14 +31,14 @@ internal sealed class MenuNotices
         if (!string.IsNullOrEmpty(title)) _items.Add(new Entry(new NoticeCard(title, color, body), lifeMs));
     }
 
-    /// À l'événement Repaint.
-    public void Draw(bool onTrack)
+    /// À l'événement Repaint. below : bas de ce qui occupe déjà le ciel (panneau des joueurs), 0 si rien.
+    public void Draw(bool onTrack, float below)
     {
         if (_items.Count == 0 || onTrack || !Tweaks.IntroSkip.TitlePassed) return;
         GuiKit.Ensure();
         double now = NetClock.NowMs;
         _items.RemoveAll(e => e.Start >= 0 && now >= e.Start + e.LifeMs);
-        var area = Area();
+        var area = MenuLayout.Sky(MaxWidth * GuiKit.Scale, below);
         float y = area.y;
         foreach (var e in _items)
         {
@@ -53,17 +53,5 @@ internal sealed class MenuNotices
             e.Card.Draw(area.xMax - e.Card.Width, y, alpha, (float)(left / e.LifeMs));
             y += e.Card.Height + 10 * GuiKit.Scale;
         }
-    }
-
-    /// Zone des cartes, alignées sur le bord droit de la bannière du jeu. Repères mesurés à l'écran titre en 1024×768,
-    /// en fractions de la hauteur (l'interface du jeu suit la hauteur) : bannière jusqu'à 0,35 H, son bord droit à
-    /// 0,12 H du bord de l'écran ; colonne du menu jusqu'à 0,55 H du bord gauche ; « jouer avec une manette » dès 0,92 H.
-    private static Rect Area()
-    {
-        float h = Screen.height, s = GuiKit.Scale;
-        float right = Screen.width - 0.118f * h, top = 0.38f * h, bottom = 0.9f * h;
-        float w = Mathf.Min(MaxWidth * s, right - 0.58f * h);
-        w = Mathf.Max(w, Mathf.Min(300 * s, right - 8)); // fenêtre très étroite : plutôt chevaucher le menu qu'écrire en colonne
-        return new Rect(right - w, top, w, bottom - top);
     }
 }

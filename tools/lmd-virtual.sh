@@ -43,7 +43,20 @@ start_screen() {
     done
 }
 
+# Le préfixe Wine est partagé : avec le vrai jeu ouvert, un lancement écrit dans son registre et tronque son journal,
+# et un stop le tuerait. On refuse donc d'agir si le jeu tourne ailleurs que sur l'écran virtuel.
+refuse_if_real_game() {
+    local p
+    for p in $(pgrep -f "[L]MD_Win_x64.exe"); do
+        tr '\0' '\n' <"/proc/$p/environ" 2>/dev/null | grep -qx "DISPLAY=$DISP" && continue
+        echo "REFUS : le jeu tourne hors de l'écran virtuel $DISP (PID $p), sans doute sur le bureau d'Edia." >&2
+        echo "Ne pas lancer de bots non plus : ils rejoindraient sa partie. Attendre qu'elle ferme le jeu." >&2
+        exit 1
+    done
+}
+
 start() {
+    refuse_if_real_game
     start_screen
     export DISPLAY="$DISP"
     export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/711540"
@@ -60,6 +73,7 @@ start() {
 }
 
 stop() {
+    refuse_if_real_game
     pkill -f "[L]MD_Win_x64.exe"
     # wineserver resté vivant : le lancement suivant échouerait (« no driver could be loaded »)
     WINEPREFIX="$HOME/.local/share/Steam/steamapps/compatdata/711540/pfx" "$(dirname "$PROTON")/files/bin/wineserver" -k 2>/dev/null

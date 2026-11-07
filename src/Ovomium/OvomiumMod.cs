@@ -17,7 +17,7 @@ namespace Ovomium;
 /// Tout ce qui touche à Unity tourne ici, dans le fil principal ; le réseau a son propre fil.
 public class OvomiumMod : MelonMod
 {
-    public const string Version = "0.5.1";
+    public const string Version = "0.5.2";
 
     private UdpNode _node;
     private RaceController _race;
@@ -102,7 +102,7 @@ public class OvomiumMod : MelonMod
             // Menu pause du jeu : les pseudos passeraient par-dessus ses boutons.
             if (_myTrack != null && !GameInfo.IsPaused()) NameLabels.Draw(_ghosts.Labels(), me);
             _panel.Draw();
-            _menuNotices.Draw(_myTrack != null);
+            _menuNotices.Draw(_myTrack != null, _panel.StackBottom);
             RaceHud.Draw(_race, NetClock.NowMs);
             _toasts.Draw(RaceHud.BannerBottom);
         });

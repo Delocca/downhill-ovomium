@@ -78,6 +78,15 @@ internal static class GameInfo
     public static bool MenuSettled() =>
         State() == StateMenus && Object.FindObjectOfType<GameMenu>() != null && !LoadingVisible();
 
+    /// Menu principal affiché (celui de la bannière « Nouvelles ») : écran titre passé, MainMenuScreen actif, pas encore
+    /// le menu de jeu. Recherche dans la scène : à ne pas appeler à chaque image.
+    public static bool OnMainMenu()
+    {
+        if (!Tweaks.IntroSkip.TitlePassed || State() != StateMenus || LoadingVisible()) return false;
+        var main = Object.FindObjectOfType<MainMenuScreen>();
+        return main != null && main.isActiveAndEnabled && Object.FindObjectOfType<GameMenu>() == null;
+    }
+
     private static PauseScreen _pause;
     private static double _nextPauseSearch;
 

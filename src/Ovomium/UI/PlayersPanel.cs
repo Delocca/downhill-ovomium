@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Ovomium.UI;
 
-/// Panneau discret en haut à droite : état réseau et joueurs détectés.
+/// Panneau discret en haut à droite (au menu principal, sous la bannière du jeu) : état réseau et joueurs détectés.
 /// En piste, il reste court : les joueurs de la piste (pastille = couleur de leur fantôme), puis un
 /// résumé des autres. Au menu, tout le monde avec sa piste.
 internal sealed class PlayersPanel
@@ -21,7 +21,9 @@ internal sealed class PlayersPanel
     private readonly List<string> _lines = new();
     private double _nextRefresh;
     private float _width = -1;
-    private bool _onTrack;
+    private bool _onTrack, _onMainMenu;
+    /// Au menu principal, là où s'empile la suite dans le ciel (MenuNotices) ; 0 ailleurs ou panneau masqué.
+    public float StackBottom { get; private set; }
 
     /// Recalcule le texte (2×/s : inutile de copier la table des pairs à chaque image).
     public void Refresh(UdpNode node, string myName, string myTrack, System.Func<ulong, bool> isGhostVisible)
@@ -32,6 +34,7 @@ internal sealed class PlayersPanel
         _lines.Clear();
         _width = -1;
         _onTrack = myTrack != null;
+        _onMainMenu = !_onTrack && GameInfo.OnMainMenu();
         string echo = node.Echo ? "  ·  <color=#ffd866>écho</color>" : "";
         _lines.Add($"<b>Ovomium {OvomiumMod.Version}</b>  ·  {node.Status}{echo}");
         if (Diagnostics.TestMode.On) _lines.Add("<color=#ff8c78><b>MODE TEST</b> : aucun résultat enregistré (TestMode)</color>");
@@ -82,15 +85,23 @@ internal sealed class PlayersPanel
 
     public void Draw()
     {
+        StackBottom = 0;
         if (!Visible || _lines.Count == 0) return;
         GuiKit.Ensure();
         float pad = 8 * GuiKit.Scale, lineH = GuiKit.Text.lineHeight + 2 * GuiKit.Scale;
         if (_width < 0) // largeur ajustée au texte, recalculée seulement quand il change
             foreach (var line in _lines) _width = Mathf.Max(_width, GuiKit.Text.CalcSize(new GUIContent(line)).x);
-        float w = Mathf.Min(_width + pad * 2, Screen.width * 0.6f);
-        // Menus : sous la barre d'onglets du jeu ; en piste, sous le temps total affiché par le jeu dans ce coin.
-        float top = Screen.height * (_onTrack ? 0.1f : 0.075f);
-        var box = new Rect(Screen.width - w - pad, top, w, _lines.Count * lineH + pad * 2);
+        float w = Mathf.Min(_width + pad * 2, Screen.width * 0.6f), h = _lines.Count * lineH + pad * 2;
+        Rect box;
+        if (_onMainMenu) // dans le ciel, sous la bannière « Nouvelles » du jeu
+        {
+            var sky = MenuLayout.Sky(w);
+            box = new Rect(sky.x, sky.y, sky.width, h);
+            StackBottom = box.yMax + 10 * GuiKit.Scale;
+        }
+        else // autres menus : sous la barre d'onglets du jeu ; en piste, sous le temps total affiché par le jeu dans ce coin
+            box = new Rect(Screen.width - w - pad, Screen.height * (_onTrack ? 0.1f : 0.075f), w, h);
+        w = box.width;
         GuiKit.Panel(box);
         for (int i = 0; i < _lines.Count; i++)
             GUI.Label(new Rect(box.x + pad, box.y + pad + i * lineH, w - pad * 2, lineH), _lines[i], GuiKit.Text);
