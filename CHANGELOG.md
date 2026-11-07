@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Corrigé : au menu principal, le panneau des joueurs recouvrait la bannière « Nouvelles » du jeu. Il passe dessous, et les avis s'empilent sous le panneau.
+
 ## 0.5.1 — 2026-10-30
 
 - Corrigé : les fantômes des joueurs qui n'ont jamais changé de tenue (tenue de base) prenaient votre propre tenue et votre vélo. Ils ont maintenant la leur.
