@@ -2,6 +2,8 @@
 
 ## Non publié
 
+## 0.5.2 — 2026-11-08
+
 - Corrigé : au menu principal, le panneau des joueurs recouvrait la bannière « Nouvelles » du jeu. Il passe dessous, et les avis s'empilent sous le panneau.
 
 ## 0.5.1 — 2026-10-30
